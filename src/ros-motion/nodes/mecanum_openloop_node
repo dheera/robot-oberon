@@ -100,7 +100,6 @@ if __name__ == "__main__":
 
         command = Float32MultiArray()
         command.data = [ front_left_out, -front_right_out, rear_left_out, -rear_right_out ]
-        print(command.data)
-        #pub_motor_command.publish(command)
+        pub_motor_command.publish(command)
 
     rospy.loginfo("shutdown")
