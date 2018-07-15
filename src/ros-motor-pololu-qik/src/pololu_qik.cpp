@@ -101,7 +101,7 @@ bool pololu_qik::spin_once( ) {
   int i;
 
   // heartbeat timeout; stops all motors if no command in 100ms
-  if(t - last_command_time > 0.1) {
+  if(t - last_command_time > 100) {
     for(i=0;i<num_devices;i++) {
       set(i, 0, 0.0);
       set(i, 1, 0.0);
@@ -149,6 +149,8 @@ void pololu_qik::command_callback( const std_msgs::Float32MultiArrayPtr &msg )
             ROS_ERROR("data value at index %d is not between -1 and 1", (int)i);
 	    return;
 	  }
+          ros::Time time = ros::Time::now();
+          last_command_time = 1000 * (uint64_t)time.sec + (uint64_t)time.nsec / 1e6;
 	  set(device_id, 0, msg->data[i]);
 	  set(device_id, 1, msg->data[i+1]);
 	}
