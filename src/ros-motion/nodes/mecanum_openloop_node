@@ -69,13 +69,13 @@ if __name__ == "__main__":
 
         # mecanum wheel math
 
-        front_left = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x - winning_command.linear.y - (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+        front_left = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x + winning_command.linear.y - (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
 
-        front_right = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x + winning_command.linear.y + (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+        front_right = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x - winning_command.linear.y + (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
 
-        rear_left = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x + winning_command.linear.y - (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+        rear_left = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x - winning_command.linear.y - (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
 
-        rear_right = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x - winning_command.linear.y + (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+        rear_right = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x + winning_command.linear.y + (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
 
         # impose limits
 
@@ -89,13 +89,13 @@ if __name__ == "__main__":
         rear_left_out = rear_left_out*0.9 + rear_left*0.1
         rear_right_out = rear_right_out*0.9 + rear_right*0.1
 
-        if abs(front_left_out) < 0.01:
+        if abs(front_left_out) < 1e-6:
             front_left_out = 0.0
-        if abs(front_right_out) < 0.01:
+        if abs(front_right_out) < 1e-6:
             front_right_out = 0.0
-        if abs(rear_left_out) < 0.01:
+        if abs(rear_left_out) < 1e-6:
             rear_left_out = 0.0
-        if abs(rear_right_out) < 0.01:
+        if abs(rear_right_out) < 1e-6:
             rear_right_out = 0.0
 
         command = Float32MultiArray()
