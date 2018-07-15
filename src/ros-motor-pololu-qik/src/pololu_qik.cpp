@@ -195,12 +195,14 @@ bool pololu_qik::set(int device_id, int channel, double speed) {
   if( 0 > write( fd, temp, 4 ) ) {
      ROS_ERROR( "Failed to update device: %s", strerror( errno ) );
      close( );
+     ros::shutdown();
      return false;
   }
 
   if( 0 > write( fd, clear_error, 1 ) ) {
      ROS_ERROR( "Failed to update device: %s", strerror( errno ) );
      close( );
+     ros::shutdown();
      return false;
   }
 
