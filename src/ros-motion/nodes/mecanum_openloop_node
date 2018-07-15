@@ -25,9 +25,10 @@ if __name__ == "__main__":
 
     NS_MOTOR = rospy.get_param("~ns_motor", "/motor")
     NS_MOTION = rospy.get_param("~ns_motion", "/motion")
-    WHEEL_BASE_X = rospy.get_param("~wheel_base_x", 137.0)
-    WHEEL_BASE_Y = rospy.get_param("~wheel_base_y", 183.0)
-    VELOCITY_SCALE = rospy.get_param("~velocity_scale", 1.0) # 1/(wheel radius) * (rad/s / (command unit))
+    WHEEL_BASE_X = rospy.get_param("~wheel_base_x", 0.137)
+    WHEEL_BASE_Y = rospy.get_param("~wheel_base_y", 0.183)
+    WHEEL_RADIUS = rospy.get_param("~wheel_radius", 0.03)
+    VELOCITY_SCALE = rospy.get_param("~velocity_scale", 0.03) # (command units / (rad/s))
     LIMIT_LINEAR = rospy.get_param("~limit_linear", 0.5)
     LIMIT_ANGULAR = rospy.get_param("~limit_angular", 1.0)
     LEVEL_EXPIRY = rospy.get_param("~level_expiry", 1.0) # TODO: not yet implemented
@@ -68,13 +69,13 @@ if __name__ == "__main__":
 
         # mecanum wheel math
 
-        front_left = VELOCITY_SCALE * (winning_command.linear.x - winning_command.linear.y - (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+        front_left = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x - winning_command.linear.y - (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
 
-        front_right = VELOCITY_SCALE * (winning_command.linear.x + winning_command.linear.y + (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+        front_right = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x + winning_command.linear.y + (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
 
-        rear_left = VELOCITY_SCALE * (winning_command.linear.x + winning_command.linear.y - (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+        rear_left = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x + winning_command.linear.y - (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
 
-        rear_right = VELOCITY_SCALE * (winning_command.linear.x - winning_command.linear.y + (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+        rear_right = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x - winning_command.linear.y + (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
 
         # impose limits
 
@@ -83,13 +84,23 @@ if __name__ == "__main__":
         rear_left = np.clip(rear_left, -1.0, 1.0)
         rear_right = np.clip(rear_right, -1.0, 1.0)
 
-        front_left_out = front_left*0.2 + front_left*0.8
-        front_right_out = front_right*0.2 + front_right*0.8
-        rear_left_out = rear_left*0.2 + rear_left*0.8
-        rear_right_out = rear_right*0.2 + rear_right*0.8
+        front_left_out = front_left_out*0.9 + front_left*0.1
+        front_right_out = front_right_out*0.9 + front_right*0.1
+        rear_left_out = rear_left_out*0.9 + rear_left*0.1
+        rear_right_out = rear_right_out*0.9 + rear_right*0.1
+
+        if abs(front_left_out) < 0.01:
+            front_left_out = 0.0
+        if abs(front_right_out) < 0.01:
+            front_right_out = 0.0
+        if abs(rear_left_out) < 0.01:
+            rear_left_out = 0.0
+        if abs(rear_right_out) < 0.01:
+            rear_right_out = 0.0
 
         command = Float32MultiArray()
-        command.data = [ front_left_out, front_right_out, rear_left_out, rear_right_out ]
-        pub_motor_command.publish(command)
+        command.data = [ front_left_out, -front_right_out, rear_left_out, -rear_right_out ]
+        print(command.data)
+        #pub_motor_command.publish(command)
 
     rospy.loginfo("shutdown")
