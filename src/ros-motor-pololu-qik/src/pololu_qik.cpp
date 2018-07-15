@@ -11,16 +11,14 @@ namespace pololu_qik
 
 pololu_qik::pololu_qik( ros::NodeHandle &_nh, ros::NodeHandle &_nh_priv ) :
 	port( "" ),
-	ch1_joint_name( "1" ),
-	ch2_joint_name( "2" ),
 	fd( -1 ),
+	num_devices(0),
+	last_command_time(0),
 	nh( _nh ),
 	nh_priv( _nh_priv )
 {
 	ROS_INFO( "Initializing" );
 	nh_priv.param( "port", port, (std::string)"/dev/ttyACM0" );
-	nh_priv.param( "ch1_joint_name", ch1_joint_name, (std::string)"1" );
-	nh_priv.param( "ch2_joint_name", ch2_joint_name, (std::string)"2" );
 }
 
 bool pololu_qik::open( )
@@ -91,18 +89,34 @@ bool pololu_qik::start( )
 
 	ROS_INFO( "Starting" );
 
-	if( !joint_traj_sub )
-		joint_traj_sub = nh.subscribe( "joint_trajectory", 1, &pololu_qik::JointTrajCB, this );
+	if( !sub_command )
+		sub_command = nh.subscribe( "command", 1, &pololu_qik::command_callback, this );
 
 	return true;
+}
+
+bool pololu_qik::spin_once( ) {
+  ros::Time time = ros::Time::now();
+  uint64_t t = 1000 * (uint64_t)time.sec + (uint64_t)time.nsec / 1e6;
+  int i;
+
+  // heartbeat timeout; stops all motors if no command in 100ms
+  if(t - last_command_time > 0.1) {
+    for(i=0;i<num_devices;i++) {
+      set(i, 0, 0.0);
+      set(i, 1, 0.0);
+    }
+  }
+
+  return true;	
 }
 
 void pololu_qik::stop( )
 {
 	ROS_INFO( "Stopping" );
 
-	if( joint_traj_sub )
-		joint_traj_sub.shutdown( );
+	if( sub_command )
+		sub_command.shutdown( );
 
 	close( );
 }
@@ -112,125 +126,85 @@ bool pololu_qik::is_open( ) const
 	return ( fd >= 0 );
 }
 
-void pololu_qik::JointTrajCB( const trajectory_msgs::JointTrajectoryPtr &msg )
+void pololu_qik::command_callback( const std_msgs::Float32MultiArrayPtr &msg )
 {
-	int ch1_idx = -1;
-	int ch2_idx = -1;
-
-	for( size_t i = 0; i < msg->joint_names.size( ); i++ )
-	{
-		if( msg->joint_names[i] == ch1_joint_name )
-			ch1_idx = i;
-		if( msg->joint_names[i] == ch2_joint_name )
-			ch2_idx = i;
+	if(msg->data.size() == 0) {
+          ROS_ERROR("no data");
+	  return;
 	}
 
-	if( 0 > ch1_idx && 0 > ch2_idx )
-	{
-		ROS_WARN( "Got a JointTrajectory message with no valid joints" );
-		return;
+	if(msg->data.size() % 2 != 0) {
+          ROS_ERROR("data is not a multiple of 2");
+	  return;
 	}
 
-	if( 1 > msg->points.size( ) )
-	{
-		ROS_WARN( "Got a JointTrajectory message with no valid points" );
-		return;
+	if(msg->data.size() / 2 > num_devices) {
+	  num_devices = msg->data.size();
 	}
 
-	if( msg->joint_names.size( ) != msg->points[0].velocities.size( ) )
+	for(size_t i = 0; i < msg->data.size( ); i+=2 )
 	{
-		ROS_WARN( "Got a JointTrajectory message whose points have no velocities" );
-		return;
+          int device_id = i / 2;
+	  if(msg->data[i] < -1.000000001 || msg->data[i] > 1.000000001) {
+            ROS_ERROR("data value at index %d is not between -1 and 1", (int)i);
+	    return;
+	  }
+	  set(device_id, 0, msg->data[i]);
+	  set(device_id, 1, msg->data[i+1]);
 	}
-
-	set_ch1( msg->points[0].velocities[ch1_idx] );
-	set_ch2( msg->points[0].velocities[ch2_idx] );
 }
 
-bool pololu_qik::set_ch1( double speed )
-{
-	static bool last_fw = false;
-	char temp[2] = { 0 };
+bool pololu_qik::set(int device_id, int channel, double speed) {
+  if(!(channel==0 || channel == 1)) {
+    ROS_ERROR("channel must be 0 or 1, got %d", channel);
+    return false;
+  }
 
-	if( !is_open( ) && !open( ) )
-		return false;
+  if(!(device_id >= 0 && device_id <= 255)) {
+    ROS_ERROR("device_id must be between 0 and 255, got %d", device_id);
+    return false;
+  }
 
-	speed *= 127;
+  if(!(speed >= -1.00000001 && speed <= 1.00000001)) {
+    ROS_ERROR("speed must be between -1 and 1, got %f", speed);
+    return false;
+  }
 
-	//Construct
-	if ( speed > 0 || ( !last_fw && speed == 0 ) )
-	{
-		temp[0] = 0x88;
-		last_fw = true;
-	}
-	else
-	{
-		temp[0] = 0x8A;
-		last_fw = false;
-	}
+  int speed_int = speed * 127;
+  char clear_error[1] = { (char)0x82 };
+  char temp[4] = { 0 };
 
-	// Make positive
-	if( speed < 0 )
-		speed *= -1;
+  temp[0] = (char)0xAA;
+  temp[1] = (char)device_id;
 
-	// Normalize 
-	if( speed > 127 )
-		speed = 127;
+  if(speed_int >= 0 && channel == 0) {
+     temp[2] = (char)0x08;
+     temp[3] = (char)(speed_int);
+  } else if(speed_int < 0 && channel == 0) {
+     temp[2] = (char)0x0B;
+     temp[3] = (char)(-speed_int);
+  } else if(speed_int >= 0 && channel == 1) {
+     temp[2] = (char)0x0C;
+     temp[3] = (char)(speed_int);
+  } else if(speed_int < 0 && channel == 1) {
+     temp[2] = (char)0x0F;
+     temp[3] = (char)(-speed_int);
+  }
 
-	temp[1] = speed;
 
-	//Send
-	if( 0 > write( fd, temp, 2 ) )
-	{
-		ROS_ERROR( "Failed to update channel 1: %s", strerror( errno ) );
-		close( );
-		return false;
-	}
+  if( 0 > write( fd, temp, 4 ) ) {
+     ROS_ERROR( "Failed to update device: %s", strerror( errno ) );
+     close( );
+     return false;
+  }
 
-	return true;
-}
+  if( 0 > write( fd, clear_error, 1 ) ) {
+     ROS_ERROR( "Failed to update device: %s", strerror( errno ) );
+     close( );
+     return false;
+  }
 
-bool pololu_qik::set_ch2( double speed )
-{
-	static bool last_fw = false;
-	char temp[2] = { 0 };
-
-	if( !is_open( ) && !open( ) )
-		return false;
-
-	speed *= 127;
-
-	//Construct
-	if ( speed > 0 || ( !last_fw && speed == 0 ) )
-	{
-		temp[0] = 0x8C;
-		last_fw = true;
-	}
-	else
-	{
-		temp[0] = 0x8E;
-		last_fw = false;
-	}
-
-	// Make positive
-	if( speed < 0 )
-		speed *= -1;
-
-	// Normalize 
-	if( speed > 127 )
-		speed = 127;
-
-	temp[1] = speed;
-
-	//Send
-	if( 0 > write( fd, temp, 2 ) )
-	{
-		ROS_ERROR( "Failed to update channel 2: %s", strerror( errno ) );
-		close( );
-		return false;
-	}
-
-	return true;
+  return true;
 }
 
 }

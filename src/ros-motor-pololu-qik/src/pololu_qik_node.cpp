@@ -35,7 +35,12 @@ int main( int argc, char *argv[] )
 	if( !qik->start( ) )
 		ROS_ERROR( "Failed to start the driver" );
 
-	ros::spin( );
+	ros::Rate rate(20);
+	while(1) {
+          rate.sleep();
+	  ros::spinOnce();
+          qik->spin_once();
+	}
 
 	delete qik;
 	delete nh_priv;

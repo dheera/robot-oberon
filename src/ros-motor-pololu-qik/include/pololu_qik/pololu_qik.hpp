@@ -2,7 +2,7 @@
 #define _pololu_qik_hpp
 
 #include <ros/ros.h>
-#include <trajectory_msgs/JointTrajectory.h>
+#include <std_msgs/Float32MultiArray.h>
 
 namespace pololu_qik
 {
@@ -16,20 +16,21 @@ public:
 	void close( );
 	bool start( );
 	void stop( );
+	bool spin_once( );
 private:
 	bool is_open( ) const;
-	void JointTrajCB( const trajectory_msgs::JointTrajectoryPtr &msg );
-	bool set_ch1( double speed );
-	bool set_ch2( double speed );
+	void command_callback(const std_msgs::Float32MultiArrayPtr &msg);
+	bool set( int device_id, int channel, double speed );
+
+        uint64_t last_command_time;
+	int num_devices;
 
 	std::string port;
-	std::string ch1_joint_name;
-	std::string ch2_joint_name;
 	int fd;
 
 	ros::NodeHandle nh;
 	ros::NodeHandle nh_priv;
-	ros::Subscriber joint_traj_sub;
+	ros::Subscriber sub_command;
 };
 
 }
