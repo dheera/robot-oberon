@@ -4,10 +4,12 @@ import rospy
 import time
 from std_msgs.msg import Float32MultiArray, Float32
 
+MAX = 40
+
 if __name__ == "__main__":
     rospy.init_node('motor_qik_test_node')
-    pub = rospy.Publisher("/command", Float32MultiArray, queue_size = 1)
-    for i in range(100):
+    pub = rospy.Publisher("/motor/command", Float32MultiArray, queue_size = 1)
+    for i in range(MAX):
       if rospy.is_shutdown():
           break
       m = Float32MultiArray()
@@ -16,7 +18,7 @@ if __name__ == "__main__":
       print(m)
       time.sleep(0.1)
 
-    for i in reversed(range(100)):
+    for i in reversed(range(MAX)):
       if rospy.is_shutdown():
           break
       m = Float32MultiArray()

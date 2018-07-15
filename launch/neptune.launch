@@ -1,7 +1,5 @@
 <launch>
-  <node pkg="motor_pololu_qik" type="pololu_qik_node" name="pololu_qik_node">
-    <param name="ch1_joint_name" type="string" value="left"/>
-    <param name="ch2_joint_name" type="string" value="right"/>
-    <param name="port" type="string" value="/dev/qik"/>
+  <node pkg="motor_pololu_qik" type="pololu_qik_node" name="pololu_qik_node" ns="motor">
+    <param name="port" type="string" value="/dev/ttyS0"/>
   </node>
 </launch>

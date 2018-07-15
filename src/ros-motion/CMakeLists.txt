@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(remote)
+project(motion)
 
 find_package(catkin REQUIRED COMPONENTS
   rospy
@@ -18,7 +18,7 @@ include_directories(
 )
 
 catkin_install_python(PROGRAMS
-  nodes/remote_node
+  nodes/motion_node
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
