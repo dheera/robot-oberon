@@ -1,6 +1,7 @@
 var theIo = null;
 var touchStartX, touchStartY, touchCurrentX, touchCurrentY;
 var touchInterval;
+var keyX = 0, keyY = 0, keyA = 0;
 
 $(function() {
   console.log("initializing");
@@ -57,6 +58,48 @@ $(function() {
     clearInterval(touchInterval);
   });
 
+
+  $(document).on("keydown", function (e) {
+    if(![33, 34, 37, 39, 38, 40].includes(e.which)) { return; }
+    if(e.which === 37) {
+      keyX -= 0.1;
+    } else if(e.which === 39) {
+      keyX += 0.1;
+    } else if(e.which === 38) {
+      keyY -= 0.1;
+    } else if(e.which === 40) {
+      keyY += 0.1;
+    } else if(e.which === 33) {
+      keyA += 0.1;
+    } else if(e.which === 34) {
+      keyA -= 0.1;
+    }
+    if(keyX > 0.5) keyX = 0.5;
+    if(keyX < -0.5) keyX = -0.5;
+    if(keyY > 0.5) keyY = 0.5;
+    if(keyY < -0.5) keyY = -0.5;
+    transmit(-keyY, keyX, keyA);
+  });
+
+  $(document).on("keyup", function (e) {
+    if(e.which === 37) {
+      keyX = 0;
+    } else if(e.which === 39) {
+      keyX = 0;
+    } else if(e.which === 38) {
+      keyY = 0;
+    } else if(e.which === 40) {
+      keyY = 0;
+    } else if(e.which === 33) {
+      keyA = 0;
+    } else if(e.which === 34) {
+      keyA = 0;
+    } else {
+      return;
+    }
+    transmit(-keyY, keyX, keyA);
+  });
+
 });
 
 function touching() {
@@ -68,5 +111,10 @@ function touching() {
   if(translationY > 1) translationY = 1;
   if(translationY < -1) translationY = -1;
   $('.messages').text(translationX + "," +  translationY);
-  theIo.emit("motion", [-translationY, translationX, 0.0]);
+  transmit(-translationY, translationX, 0.0);
+}
+
+function transmit(lx, ly, az) {
+  console.log(lx, ly, az);
+  theIo.emit("motion", [lx, ly, az]);
 }
