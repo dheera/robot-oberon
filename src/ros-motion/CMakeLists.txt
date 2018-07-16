@@ -18,7 +18,7 @@ include_directories(
 )
 
 catkin_install_python(PROGRAMS
-  nodes/motion_node
+  nodes/mecanum_openloop_node
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

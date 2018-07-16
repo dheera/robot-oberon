@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cd /home/pi/robot-oberon
+source devel/setup.bash
+roslaunch launch/default.launch
