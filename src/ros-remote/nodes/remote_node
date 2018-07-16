@@ -1,31 +1,47 @@
-#!/usr/bin/env python3
+#!/usr/bin/env node
+"use strict";
 
-from aiohttp import web
-import socketio
+const express = require('express');
+const http = require('http');
+const socketio = require('socket.io');
+const path = require('path');
+const ros = require('rosnodejs');
+const geometry_msgs = ros.require('geometry_msgs');
 
-sio = socketio.AsyncServer()
-app = web.Application()
-sio.attach(app)
+var app = express();
+var server = http.createServer(app);
+var io = socketio(server);
+app.use("/", express.static(path.join(__dirname, 'html')));
 
-async def index(request):
-    with open('index.html') as f:
-        return web.Response(text=f.read(), content_type='text/html')
+ros.initNode('remote_node').then(() => {
+  console.log("ros node initialized")
+});
 
-@sio.on('connect', namespace='/')
-def connect(sid, environ):
-    print("connect", sid)
+const nh = ros.nh;
+const sub = nh.subscribe('/rosout', 'rosgraph_msgs/Log', (msg) => {
+  io.of("/robot").emit('rosout', msg);
+});
+const pub_motion = nh.advertise('/motion/level2', 'geometry_msgs/Twist')
 
-@sio.on('message', namespace='/')
-async def message(sid, data):
-    print("message", data)
-    await aio.emit('reply', room=sid)
+io.of("/robot").on('connection', (socket) => {
+  console.log('connection');
+  var interval = setInterval(() => {
+     socket.emit("status", {});
+  }, 3000);
 
-@sio.on('disconnect', namespace='/')
-def disconnect(sid):
-    print("disconnect", sid)
+  socket.on("motion", (msg) => {
+    let t = new geometry_msgs.msg.Twist();
+    if(!(typeof(msg[0]) === "number")) return;
+    if(!(typeof(msg[1]) === "number")) return;
+    if(!(typeof(msg[2]) === "number")) return;
 
-app.router.add_static('/static', 'static')
-app.router.add_get('/', index)
+    t.linear.x = msg[0] || 0.0;
+    t.linear.y = msg[1] || 0.0;
+    t.angular.z = msg[2] || 0.0;
+    pub_motion.publish(t);
+  });
+});
 
-if __name__ == "__main__":
-    web.run_app(app)
+server.listen(8000, () => {
+  console.log("listening");
+});
