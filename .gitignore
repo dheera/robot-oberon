@@ -2,3 +2,5 @@ build/
 devel/
 build/*
 devel/*
+node_modules/
+node_modules/*
