@@ -4,4 +4,5 @@
   </node>
   <node pkg="imu_bno055" type="imu_bno055_node" name="imu_bno055_node" ns="imu"/>
   <node pkg="motion" type="mecanum_openloop_node" name="mecanum_openloop_node"/>
+  <node pkg="remote" type="remote_node" name="remote_node"/>
 </launch>
