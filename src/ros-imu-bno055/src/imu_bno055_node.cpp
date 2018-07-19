@@ -33,9 +33,9 @@ int main(int argc, char *argv[]) {
 	if( !imu->start( ) )
 		ROS_ERROR( "Failed to start the driver" );
 
-	ros::Rate rate(20);
-	while(1) {
-          rate.sleep();
+	ros::Rate rate(200);
+	while(ros::ok()) {
+	  rate.sleep();
           ros::spinOnce();
           imu->spin_once();
 	}

@@ -5,6 +5,7 @@
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/MagneticField.h>
 #include <sensor_msgs/Temperature.h>
+#include "serial/serial.h"
 
 namespace imu_bno055 {
 
@@ -20,9 +21,12 @@ class imu_bno055 {
   private:
 	bool is_open( ) const;
 
+	std::string frame_id;
 	std::string port;
-	int fd;
+	int baud;
+	int seq;
 
+	serial::Serial ser;
 	ros::NodeHandle nh;
 	ros::NodeHandle nh_priv;
 	ros::Publisher pub_data;
