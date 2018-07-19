@@ -2,6 +2,6 @@
   <node pkg="motor_pololu_qik" type="pololu_qik_node" name="pololu_qik_node" ns="motor">
     <param name="port" type="string" value="/dev/ttyS0"/>
   </node>
-  <node pkg="motion" type="mecanum_openloop_node" name="mecanum_openloop_node">
-  </node>
+  <node pkg="motion" type="mecanum_openloop_node" name="mecanum_openloop_node"/>
+  <node pkg="imu_bno055" type="imu_bno055_node" name="imu_bno055_node"/>
 </launch>
