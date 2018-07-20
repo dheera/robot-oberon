@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(psutil)
+project(status_system)
 
 find_package(catkin REQUIRED COMPONENTS
   rospy
@@ -18,7 +18,7 @@ include_directories(
 )
 
 catkin_install_python(PROGRAMS
-  nodes/psutil_node
+  nodes/status_system_node
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

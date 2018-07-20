@@ -3,6 +3,7 @@
     <param name="port" type="string" value="/dev/ttyS0"/>
   </node>
   <node pkg="imu_bno055" type="imu_bno055_node" name="imu_bno055_node" ns="imu"/>
+  <node pkg="status_systsem" type="status_systsem_node" name="status_systsem_node" ns="status"/>
   <node pkg="motion" type="mecanum_openloop_node" name="mecanum_openloop_node"/>
   <node pkg="remote" type="remote_node" name="remote_node"/>
 </launch>
