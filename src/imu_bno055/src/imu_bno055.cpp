@@ -34,8 +34,11 @@ typedef struct {
   int16_t fused_linear_acceleration_x;
   int16_t fused_linear_acceleration_y;
   int16_t fused_linear_acceleration_z;
-  int16_t temperature;
-  int16_t calibration_status;
+  int16_t gravity_vector_x;
+  int16_t gravity_vector_y;
+  int16_t gravity_vector_z;
+  int8_t temperature;
+  int8_t calibration_status;
 } imu_record;
 
 namespace imu_bno055 {
