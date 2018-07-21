@@ -1,0 +1,105 @@
+#!/usr/bin/env python3
+
+import numpy as np
+import rospy
+import time
+
+from geometry_msgs.msg import Twist
+from std_msgs.msg import Float32MultiArray
+
+def on_motion_level(msg, level):
+    on_motion_level.last_command_times[level] = time.time()
+    on_motion_level.last_commands[level] = msg
+
+on_motion_level.last_command_times = [0.0] * 5
+on_motion_level.last_commands = [Twist()] * 5
+
+if __name__ == "__main__":
+    rospy.init_node("mecanum_openloop_node")
+    rospy.loginfo("initializing")
+
+    front_left_out = 0.0
+    front_right_out = 0.0
+    rear_left_out = 0.0
+    rear_right_out = 0.0
+
+    NS_MOTOR = rospy.get_param("~ns_motor", "/motor")
+    NS_MOTION = rospy.get_param("~ns_motion", "/motion")
+    WHEEL_BASE_X = rospy.get_param("~wheel_base_x", 0.137)
+    WHEEL_BASE_Y = rospy.get_param("~wheel_base_y", 0.183)
+    WHEEL_RADIUS = rospy.get_param("~wheel_radius", 0.03)
+    VELOCITY_SCALE = rospy.get_param("~velocity_scale", 0.03) # (command units / (rad/s))
+    LIMIT_LINEAR = rospy.get_param("~limit_linear", 0.5)
+    LIMIT_ANGULAR = rospy.get_param("~limit_angular", 1.0)
+    LEVEL_EXPIRY = rospy.get_param("~level_expiry", 1.0) # TODO: not yet implemented
+
+    for level in range(5):
+        rospy.Subscriber("%s/level%d" % (NS_MOTION, level),
+                Twist, on_motion_level, callback_args = level)
+
+    pub_motor_command = rospy.Publisher("%s/command" % NS_MOTOR,
+            Float32MultiArray, queue_size = 1)
+
+    rate = rospy.Rate(50)
+    while not rospy.is_shutdown():
+        rate.sleep()
+        t = time.time()
+
+        # compute the "winning" command (highest non-expired level)
+
+        winning_level = np.argmax(on_motion_level.last_command_times)
+        winning_time = on_motion_level.last_command_times[winning_level]
+        winning_command = on_motion_level.last_commands[winning_level]
+
+        # no commands over 100ms old
+
+        if t - winning_time > 0.1:
+            winning_command.linear.x = 0
+            winning_command.linear.y = 0
+            winning_command.angular.z = 0
+
+        # impose limits
+
+        winning_command.linear.x = np.clip(winning_command.linear.x,
+                -LIMIT_LINEAR, LIMIT_LINEAR)
+        winning_command.linear.z = np.clip(winning_command.linear.z,
+                -LIMIT_LINEAR, LIMIT_LINEAR)
+        winning_command.angular.x = np.clip(winning_command.angular.x,
+                -LIMIT_ANGULAR, LIMIT_ANGULAR)
+
+        # mecanum wheel math
+
+        front_left = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x + winning_command.linear.y - (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+
+        front_right = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x - winning_command.linear.y + (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+
+        rear_left = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x - winning_command.linear.y - (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+
+        rear_right = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x + winning_command.linear.y + (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+
+        # impose limits
+
+        front_left = np.clip(front_left, -1.0, 1.0)
+        front_right = np.clip(front_right, -1.0, 1.0)
+        rear_left = np.clip(rear_left, -1.0, 1.0)
+        rear_right = np.clip(rear_right, -1.0, 1.0)
+
+        front_left_out = front_left_out*0.9 + front_left*0.1
+        front_right_out = front_right_out*0.9 + front_right*0.1
+        rear_left_out = rear_left_out*0.9 + rear_left*0.1
+        rear_right_out = rear_right_out*0.9 + rear_right*0.1
+
+        if abs(front_left_out) < 1e-6:
+            front_left_out = 0.0
+        if abs(front_right_out) < 1e-6:
+            front_right_out = 0.0
+        if abs(rear_left_out) < 1e-6:
+            rear_left_out = 0.0
+        if abs(rear_right_out) < 1e-6:
+            rear_right_out = 0.0
+
+        command = Float32MultiArray()
+        command.data = [ front_left_out, -front_right_out, rear_left_out, -rear_right_out ]
+        pub_motor_command.publish(command)
+
+    rospy.loginfo("shutdown")

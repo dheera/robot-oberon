@@ -1,0 +1,8 @@
+prefix=/home/pi/robot-oberon/install
+
+Name: imu
+Description: Description of imu
+Version: 0.0.0
+Cflags: 
+Libs: -L/home/pi/robot-oberon/install/lib 
+Requires: 

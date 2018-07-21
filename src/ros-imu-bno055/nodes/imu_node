@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+
+import os, signal, sys, time
+import rospy
+import serial
+import struct as st
+
+from sensor_msgs.msg import Imu, Temperature, MagneticField
+from std_msgs.msg import String
+from watchdog import Watchdog
+
+imu_data = Imu()            # Filtered data
+imu_raw = Imu()             # Raw IMU data
+temperature_msg = Temperature() # Temperature
+mag_msg = MagneticField()       # Magnetometer data
+
+wd = None
+ser = None
+
+def shutdown():
+  rospy.logerr("IMU failure")
+  time.sleep(0.25)
+  os.kill(os.getpid(),signal.SIGKILL)
+
+# Main function
+if __name__ == '__main__':
+    rospy.init_node("imu_node")
+
+    # Sensor measurements publishers
+    TOPIC_DATA = rospy.get_param('~topic_data', 'data')
+    pub_data = rospy.Publisher(TOPIC_DATA, Imu, queue_size=1)
+    TOPIC_RAW = rospy.get_param('~topic_raw', 'raw')
+    pub_raw = rospy.Publisher(TOPIC_RAW, Imu, queue_size=1)
+    TOPIC_MAG = rospy.get_param('~topic_mag', 'mag')
+    pub_mag = rospy.Publisher(TOPIC_MAG, MagneticField, queue_size=1)
+    TOPIC_TEMP = rospy.get_param('~topic_temp', 'temp')
+    pub_temp = rospy.Publisher(TOPIC_TEMP, Temperature, queue_size=1)
+
+    # Get parameters values
+    PORT = rospy.get_param('~device', '/dev/imu0')
+    FRAME_ID = rospy.get_param('~frame_id', 'imu_link')
+    FREQUENCY = rospy.get_param('~frequency', 100)
+
+    # Open serial port
+    try:
+        ser = serial.Serial(PORT, 115200, timeout=0.2, write_timeout=1)
+    except serial.serialutil.SerialException:
+        rospy.logerr("IMU not found at " + PORT)
+        sys.exit(0)
+
+    rospy.loginfo("initializing")
+
+    rate = rospy.Rate(FREQUENCY)
+    acc_fact = 100.0
+    mag_fact = 16.0
+    gyr_fact = 900.0
+    seq = 0
+
+    wd = Watchdog(timeout=3, on_expire = shutdown)
+    wd.start()
+
+    while not rospy.is_shutdown():
+
+        # wait for 0xF0 ...
+
+        c = bytearray([0])
+        while c[0] != 0xF0:
+          c = bytearray(ser.read(1))
+          if len(c) == 0:
+            c = bytearray([0])
+
+        # ... and then read 45 bytes which contain a complete set of IMU data
+
+        buf = bytearray(ser.read(46))
+
+        if buf != 0:
+            # Publish raw data
+            imu_raw.header.stamp = rospy.Time.now()
+            imu_raw.header.frame_id = FRAME_ID
+            imu_raw.header.seq = seq
+            imu_raw.orientation_covariance[0] = -1
+            imu_raw.linear_acceleration.x = float(st.unpack('h', st.pack('BB', buf[0], buf[1]))[0]) / acc_fact
+            imu_raw.linear_acceleration.y = float(st.unpack('h', st.pack('BB', buf[2], buf[3]))[0]) / acc_fact
+            imu_raw.linear_acceleration.z = float(st.unpack('h', st.pack('BB', buf[4], buf[5]))[0]) / acc_fact
+            imu_raw.linear_acceleration_covariance[0] = -1
+            imu_raw.angular_velocity.x = float(st.unpack('h', st.pack('BB', buf[12], buf[13]))[0]) / gyr_fact
+            imu_raw.angular_velocity.y = float(st.unpack('h', st.pack('BB', buf[14], buf[15]))[0]) / gyr_fact
+            imu_raw.angular_velocity.z = float(st.unpack('h', st.pack('BB', buf[16], buf[17]))[0]) / gyr_fact
+            imu_raw.angular_velocity_covariance[0] = -1
+            pub_raw.publish(imu_raw)
+
+            # Publish filtered data
+            imu_data.header.stamp = rospy.Time.now()
+            imu_data.header.frame_id = FRAME_ID
+            imu_data.header.seq = seq
+            o_w = float(st.unpack('h', st.pack('BB', buf[24], buf[25]))[0])
+            o_x = float(st.unpack('h', st.pack('BB', buf[26], buf[27]))[0])
+            o_y = float(st.unpack('h', st.pack('BB', buf[28], buf[29]))[0])
+            o_z = float(st.unpack('h', st.pack('BB', buf[30], buf[31]))[0])
+            # calculate normalizer;
+            o_norm = (o_x*o_x + o_y*o_y + o_z*o_z + o_w*o_w)**0.5
+            imu_data.orientation.w = o_w/o_norm
+            imu_data.orientation.x = o_x/o_norm
+            imu_data.orientation.y = o_y/o_norm
+            imu_data.orientation.z = o_z/o_norm
+            imu_data.orientation_covariance[0] = 0.0001
+            imu_data.orientation_covariance[4] = 0.0001
+            imu_data.orientation_covariance[8] = 0.00005
+            imu_data.linear_acceleration.x = float(st.unpack('h', st.pack('BB', buf[32], buf[33]))[0]) / acc_fact
+            imu_data.linear_acceleration.y = float(st.unpack('h', st.pack('BB', buf[34], buf[35]))[0]) / acc_fact
+            imu_data.linear_acceleration.z = float(st.unpack('h', st.pack('BB', buf[36], buf[37]))[0]) / acc_fact
+            imu_data.linear_acceleration_covariance[0] = 0.001
+            imu_data.linear_acceleration_covariance[4] = 0.01
+            imu_data.linear_acceleration_covariance[8] = 0.01
+            imu_data.angular_velocity.x = float(st.unpack('h', st.pack('BB', buf[12], buf[13]))[0]) / gyr_fact
+            imu_data.angular_velocity.y = float(st.unpack('h', st.pack('BB', buf[14], buf[15]))[0]) / gyr_fact
+            imu_data.angular_velocity.z = float(st.unpack('h', st.pack('BB', buf[16], buf[17]))[0]) / gyr_fact
+            imu_data.angular_velocity_covariance[0] = 0.0004
+            imu_data.angular_velocity_covariance[4] = 0.0004
+            imu_data.angular_velocity_covariance[8] = 0.005
+            pub_data.publish(imu_data)
+
+            # Publish magnetometer data
+            mag_msg.header.stamp = rospy.Time.now()
+            mag_msg.header.frame_id = FRAME_ID
+            mag_msg.header.seq = seq
+            mag_msg.magnetic_field.x = float(st.unpack('h', st.pack('BB', buf[6], buf[7]))[0]) / mag_fact
+            mag_msg.magnetic_field.y = float(st.unpack('h', st.pack('BB', buf[8], buf[9]))[0]) / mag_fact
+            mag_msg.magnetic_field.z = float(st.unpack('h', st.pack('BB', buf[10], buf[11]))[0]) / mag_fact
+            pub_mag.publish(mag_msg)
+
+            # Publish temperature
+            temperature_msg.header.stamp = rospy.Time.now()
+            temperature_msg.header.frame_id = FRAME_ID
+            temperature_msg.header.seq = seq
+            temperature_msg.temperature = buf[44]
+            pub_temp.publish(temperature_msg)
+
+            calib_status = buf[45]
+            system_stat = (calib_status & 0b11000000) >> 6
+            gyro_stat = (calib_status & 0b00110000) >> 4
+            acc_stat = (calib_status & 0b00001100) >> 2
+            mag_stat = (calib_status & 0b00000011)
+
+            wd.refresh()
+
+            seq = seq + 1
+        rate.sleep()
+    ser.close()
