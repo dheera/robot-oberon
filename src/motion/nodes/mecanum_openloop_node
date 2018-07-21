@@ -62,11 +62,15 @@ if __name__ == "__main__":
 
         winning_level = np.argmax(on_motion_level.last_command_times)
         winning_time = on_motion_level.last_command_times[winning_level]
-        winning_command = on_motion_level.last_commands[winning_level]
 
-        # no commands over 100ms old
+        winning_command = Twist()
+        winning_command.linear.x = on_motion_level.last_commands[winning_level].linear.x
+        winning_command.linear.y = on_motion_level.last_commands[winning_level].linear.y
+        winning_command.angular.z = on_motion_level.last_commands[winning_level].angular.z
 
-        if t - winning_time > 0.1:
+        # no commands over 250ms old
+
+        if t - winning_time > 0.250:
             winning_command.linear.x = 0
             winning_command.linear.y = 0
             winning_command.angular.z = 0

@@ -24,7 +24,7 @@ AvoidanceActivity::AvoidanceActivity(ros::NodeHandle &_nh, ros::NodeHandle &_nh_
 bool AvoidanceActivity::start() {
   ROS_INFO("starting");
 
-  if(!pub_multiplier) pub_multiplier = nh.advertise<geometry_msgs::Twist>(ns_motion + "multiplier", 1);
+  if(!pub_multiplier) pub_multiplier = nh.advertise<std_msgs::Float32>(ns_motion + "/multiplier", 1);
 
   if(!sub_scan) {
     sub_scan = nh.subscribe(ns_lidar + "/scan", 1, &AvoidanceActivity::onScan, this);
@@ -64,9 +64,11 @@ void AvoidanceActivity::onScan(const sensor_msgs::LaserScanPtr& msg) {
   double r;
   int i;
 
+  double multiplier_min = 1.0;
+
   for(i=0;i<msg->ranges.size();i++) {
     r = msg->ranges[i];
-    if(r > 0.4) continue;
+    if(r > 0.7) continue;
 
     if(inverted) {
       theta = angle_offset + msg->angle_min - msg->angle_increment * i;
@@ -74,10 +76,22 @@ void AvoidanceActivity::onScan(const sensor_msgs::LaserScanPtr& msg) {
       theta = angle_offset + msg->angle_min + msg->angle_increment * i;
     }
 
-    if(r*sin(theta - motion_angle) < avoidance_width/2) {
-      ROS_INFO_STREAM("obj in path; r=" << r << " theta=" << theta << " motion_angle=" << motion_angle);
+    if(cos(theta - motion_angle) > 0.5 && std::abs(r*sin(theta - motion_angle)) < avoidance_width/2) {
+      if(r < 0.3) {
+         ROS_WARN_STREAM_THROTTLE(2, "obstacle in path");
+      }
+      multiplier_min = std::min(
+              multiplier_min, 
+              pow((std::max(r, 0.25) - 0.25) / 0.7, 0.5)
+      );
     }
   }
+
+  ROS_DEBUG_STREAM("multiplier = " << multiplier_min);
+
+  std_msgs::Float32 msg_multiplier;
+  msg_multiplier.data = multiplier_min;
+  pub_multiplier.publish(msg_multiplier);
 
 }
 
