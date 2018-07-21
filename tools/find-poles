@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+
+# Determines where the flag is.
+
+import json
+import math
+import numpy
+import rospy
+import sys
+import time
+
+from sensor_msgs.msg import LaserScan 
+
+allrs = []
+allthetas = []
+
+last_laserscan_time = 0
+def on_laserscan(data):
+    """
+    Callback for LaserScan data.
+    """
+
+    print("on_laserscan")
+
+    global last_laserscan_time, OFFSET_ANGLE_Z, limit_max, limit_min, limit_max_time, limit_min_time
+
+    if len(data.ranges) > 100:
+        last_laserscan_time = time.time()
+    else:
+        return
+
+    rs = numpy.array(data.ranges)
+    thetas = numpy.arange(0, len(data.ranges), 1) * data.angle_increment + data.angle_min
+
+    for r, theta in zip(rs, thetas):
+        if r < 0.3:
+            print(r, theta)
+
+if __name__ == "__main__":
+
+    rospy.init_node('whereistheflag')
+
+    # parameters
+
+    TOPIC_LASERSCAN = rospy.get_param('~topic_laserscan', '/lidar/scan')
+    rospy.Subscriber(TOPIC_LASERSCAN, LaserScan, on_laserscan)
+
+    rate = rospy.Rate(10)
+    while not rospy.is_shutdown():
+        rate.sleep()
+
+    rospy.loginfo("ROS shutdown requested")
