@@ -5,54 +5,29 @@ import psutil
 import rospy
 import time
 
+from std_msgs.msg import String
+
 def mean(list):
     return sum(list)/len(list)
-
-from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 
 if __name__ == "__main__":
     rospy.init_node("status_system_node")
 
-    pub_psutil = rospy.Publisher("system", DiagnosticStatus, queue_size = 1)
+    pub_psutil = rospy.Publisher("system", String, queue_size = 1)
 
     rate = rospy.Rate(0.2)
     while not rospy.is_shutdown():
         rate.sleep()
 
-        status = DiagnosticStatus()
-        status.values.append(KeyValue(
-            'cpu_temp',
-            "%2.1f" % mean(list(map(lambda x:x.current, psutil.sensors_temperatures()['coretemp'])))
-        ))
-
-        status.values.append(KeyValue(
-            'cpu_percent',
-            "%2.1f" % mean(psutil.cpu_percent(percpu=True))
-        ))
-
-        status.values.append(KeyValue(
-            'disk_percent',
-            "%2.1f" % psutil.disk_usage('/').percent
-        ))
-
-        status.values.append(KeyValue(
-            'net_bytes_sent',
-            str(psutil.net_io_counters().bytes_sent),
-        ))
-
-        status.values.append(KeyValue(
-            'net_bytes_recv',
-            str(psutil.net_io_counters().bytes_recv),
-        ))
-
-        status.values.append(KeyValue(
-            'mem_virtual_percent',
-            "%2.1f" % psutil.virtual_memory().percent
-        ))
-
-        status.values.append(KeyValue(
-            'mem_swap_percent',
-            "%2.1f" % psutil.swap_memory().percent
-        ))
+        status = {}
+        sensors_temperatures = psutil.sensors_temperatures()
+        if 'coretemp' in sensors_temperatures:
+            status['cpu_temp'] = mean(list(map(lambda x:x.current, sensors_temperatures['coretemp'])))
+        status['cpu_percent'] = mean(psutil.cpu_percent(percpu=True))
+        status['disk_percent'] = psutil.disk_usage('/').percent
+        status['net_bytes_sent'] = psutil.net_io_counters().bytes_sent
+        status['net_bytes_recv'] = psutil.net_io_counters().bytes_recv
+        status['mem_virtual_percent'] = psutil.virtual_memory().percent
+        status['mem_swap_percent'] = psutil.swap_memory().percent
 
         pub_psutil.publish(status)
