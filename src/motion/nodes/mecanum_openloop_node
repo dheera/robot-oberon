@@ -5,7 +5,7 @@ import rospy
 import time
 
 from geometry_msgs.msg import Twist
-from std_msgs.msg import Float32MultiArray
+from std_msgs.msg import Float32MultiArray, Float32
 
 def on_motion_level(msg, level):
     on_motion_level.last_command_times[level] = time.time()
@@ -13,6 +13,13 @@ def on_motion_level(msg, level):
 
 on_motion_level.last_command_times = [0.0] * 5
 on_motion_level.last_commands = [Twist()] * 5
+
+def on_multiplier(msg):
+    on_multiplier.last_multiplier_time = time.time()
+    on_multiplier.last_multiplier = np.clip(msg.data, 0.0, 1.0)
+
+on_multiplier.last_multiplier = 0.0
+on_multiplier.last_multiplier_time = 0.0
 
 if __name__ == "__main__":
     rospy.init_node("mecanum_openloop_node")
@@ -36,6 +43,12 @@ if __name__ == "__main__":
     for level in range(5):
         rospy.Subscriber("%s/level%d" % (NS_MOTION, level),
                 Twist, on_motion_level, callback_args = level)
+
+    rospy.Subscriber("%s/multiplier" % (NS_MOTION),
+            Float32, on_multiplier)
+
+    pub_motion_winning = rospy.Publisher("%s/winning" % NS_MOTION,
+            Twist, queue_size = 1)
 
     pub_motor_command = rospy.Publisher("%s/command" % NS_MOTOR,
             Float32MultiArray, queue_size = 1)
@@ -66,6 +79,14 @@ if __name__ == "__main__":
                 -LIMIT_LINEAR, LIMIT_LINEAR)
         winning_command.angular.x = np.clip(winning_command.angular.x,
                 -LIMIT_ANGULAR, LIMIT_ANGULAR)
+
+        pub_motion_winning.publish(winning_command)
+
+        # apply multipliersa
+
+        winning_command.linear.x *= on_multiplier.last_multiplier
+        winning_command.linear.y *= on_multiplier.last_multiplier
+        winning_command.angular.z *= on_multiplier.last_multiplier
 
         # mecanum wheel math
 
