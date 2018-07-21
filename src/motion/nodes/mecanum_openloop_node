@@ -90,13 +90,13 @@ if __name__ == "__main__":
 
         # mecanum wheel math
 
-        front_left = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x + winning_command.linear.y - (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+        front_left = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x - winning_command.linear.y + (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
 
-        front_right = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x - winning_command.linear.y + (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+        front_right = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x + winning_command.linear.y - (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
 
-        rear_left = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x - winning_command.linear.y - (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+        rear_left = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x + winning_command.linear.y + (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
 
-        rear_right = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x + winning_command.linear.y + (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+        rear_right = 1/WHEEL_RADIUS * VELOCITY_SCALE * (winning_command.linear.x - winning_command.linear.y - (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
 
         # impose limits
 

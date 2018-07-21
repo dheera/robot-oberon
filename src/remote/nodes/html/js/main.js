@@ -78,7 +78,7 @@ $(function() {
     if(keyX < -0.5) keyX = -0.5;
     if(keyY > 0.5) keyY = 0.5;
     if(keyY < -0.5) keyY = -0.5;
-    transmit(-keyY, keyX, keyA);
+    transmit(-keyY, -keyX, keyA);
   });
 
   $(document).on("keyup", function (e) {
@@ -97,7 +97,7 @@ $(function() {
     } else {
       return;
     }
-    transmit(-keyY, keyX, keyA);
+    transmit(-keyY, -keyX, keyA);
   });
 
 });
@@ -111,7 +111,7 @@ function touching() {
   if(translationY > 1) translationY = 1;
   if(translationY < -1) translationY = -1;
   $('.messages').text(translationX + "," +  translationY);
-  transmit(-translationY, translationX, 0.0);
+  transmit(-translationY, -translationX, 0.0);
 }
 
 function transmit(lx, ly, az) {

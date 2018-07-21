@@ -15,6 +15,7 @@ class AvoidanceActivity {
 	bool stop();
 	bool spinOnce();
     void onScan(const sensor_msgs::LaserScanPtr& msg);
+    void onWinning(const geometry_msgs::TwistPtr& msg);
 
   private:
 
@@ -25,10 +26,13 @@ class AvoidanceActivity {
     std::string ns_lidar;
     bool inverted;
     double angle_offset;
+    double avoidance_width;
 
-	ros::Publisher pub_max;
-	ros::Publisher pub_min;
+    double motion_angle;
+
+	ros::Publisher pub_multiplier;
 	ros::Subscriber sub_scan;
+	ros::Subscriber sub_winning;
 };
 
 }
