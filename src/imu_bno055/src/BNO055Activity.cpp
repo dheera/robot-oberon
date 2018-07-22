@@ -1,4 +1,4 @@
-#include "imu_bno055/imu_bno055.hpp"
+#include "imu_bno055/BNO055Activity.hpp"
 
 #include <cstdlib>
 #include <cerrno>
@@ -43,7 +43,7 @@ typedef struct {
 
 namespace imu_bno055 {
 
-imu_bno055::imu_bno055( ros::NodeHandle &_nh, ros::NodeHandle &_nh_priv ) :
+BNO055Activity::BNO055Activity( ros::NodeHandle &_nh, ros::NodeHandle &_nh_priv ) :
 	port(""),
 	nh(_nh),
 	seq(0),
@@ -55,7 +55,7 @@ imu_bno055::imu_bno055( ros::NodeHandle &_nh, ros::NodeHandle &_nh_priv ) :
 	nh_priv.param( "frame_id", frame_id, (std::string)"imu" );
 }
 
-bool imu_bno055::open() {
+bool BNO055Activity::open() {
 	try {
 	ser.setPort(port);
 	ser.setBaudrate(baud);
@@ -75,13 +75,13 @@ bool imu_bno055::open() {
 	return true;
 }
 
-void imu_bno055::close() {
+void BNO055Activity::close() {
 	ROS_INFO("closing port");
 	ser.close();
 }
 
-bool imu_bno055::start() {
-	if(!is_open() && !open()) return false;
+bool BNO055Activity::start() {
+	if(!isOpen() && !open()) return false;
 
 	ROS_INFO("starting");
 
@@ -93,7 +93,7 @@ bool imu_bno055::start() {
 	return true;
 }
 
-bool imu_bno055::spin_once( ) {
+bool BNO055Activity::spinOnce( ) {
   ros::Time time = ros::Time::now();
   uint64_t t = 1000 * (uint64_t)time.sec + (uint64_t)time.nsec / 1e6;
 
@@ -171,7 +171,7 @@ bool imu_bno055::spin_once( ) {
   return true;	
 }
 
-void imu_bno055::stop() {
+void BNO055Activity::stop() {
 	ROS_INFO("stopping");
 
 	if(pub_data) pub_data.shutdown();
@@ -182,12 +182,8 @@ void imu_bno055::stop() {
 	close();
 }
 
-bool imu_bno055::is_open() const {
+bool BNO055Activity::isOpen() const {
 	return ser.isOpen();
-}
-
-void spin_once() {
-
 }
 
 }

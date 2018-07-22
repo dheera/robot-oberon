@@ -7,7 +7,7 @@ catkin_package(INCLUDE_DIRS include)
 
 include_directories(include ${catkin_INCLUDE_DIRS})
 
-add_executable(imu_bno055_node src/imu_bno055_node.cpp src/imu_bno055.cpp)
+add_executable(imu_bno055_node src/imu_bno055_node.cpp src/BNO055Activity.cpp)
 
 include_directories(${catkin_INCLUDE_DIRS})
 

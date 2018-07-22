@@ -1,48 +1,57 @@
-#include <imu_bno055/imu_bno055.hpp>
+#include <imu_bno055/BNO055Activity.hpp>
 
 int main(int argc, char *argv[]) {
-	ros::NodeHandle *nh = NULL;
-	ros::NodeHandle *nh_priv = NULL;
-	imu_bno055::imu_bno055 *imu = NULL;
+    ros::NodeHandle *nh = NULL;
+    ros::NodeHandle *nh_priv = NULL;
+    imu_bno055::BNO055Activity *activity = NULL;
 
-	ros::init(argc, argv, "imu_bno055_node");
+    ros::init(argc, argv, "imu_bno055_node");
 
-	nh = new ros::NodeHandle( );
-	if(!nh) {
-		ROS_FATAL( "Failed to initialize NodeHanlde" );
-		ros::shutdown( );
-		return -1;
-	}
+    nh = new ros::NodeHandle( );
+    if(!nh) {
+        ROS_FATAL("Failed to initialize NodeHandle");
+        ros::shutdown( );
+        return -1;
+    }
 
-	nh_priv = new ros::NodeHandle("~");
-	if( !nh_priv ) {
-		ROS_FATAL("Failed to initialize private NodeHanlde");
-		delete nh;
-		ros::shutdown( );
-		return -2;
-	}
+    nh_priv = new ros::NodeHandle("~");
+    if( !nh_priv ) {
+        ROS_FATAL("Failed to initialize private NodeHandle");
+        delete nh;
+        ros::shutdown( );
+        return -2;
+    }
 
-	imu = new imu_bno055::imu_bno055( *nh, *nh_priv );
-	if( !imu ) {
-		ROS_FATAL( "Failed to initialize driver" );
-		delete nh_priv;
-		delete nh;
-		ros::shutdown( );
-		return -3;
-	}
-	if( !imu->start( ) )
-		ROS_ERROR( "Failed to start the driver" );
+    activity = new imu_bno055::BNO055Activity(*nh, *nh_priv);
+    if(!activity) {
+        ROS_FATAL("Failed to initialize activity");
+        delete nh_priv;
+        delete nh;
+        ros::shutdown();
+        return -3;
+    }
 
-	ros::Rate rate(200);
-	while(ros::ok()) {
-	  rate.sleep();
-          ros::spinOnce();
-          imu->spin_once();
-	}
+    if(!activity->start()) {
+        ROS_FATAL("Failed to start activity");
+        delete activity;
+        delete nh_priv;
+        delete nh;
+        ros::shutdown();
+        return -4;
+    }
 
-	delete imu;
-	delete nh_priv;
-	delete nh;
+    ros::Rate rate(200);
+    while(ros::ok()) {
+        rate.sleep();
+        ros::spinOnce();
+        activity->spinOnce();
+    }
 
-	return 0;
+    activity->stop();
+
+    delete activity;
+    delete nh_priv;
+    delete nh;
+
+    return 0;
 }
