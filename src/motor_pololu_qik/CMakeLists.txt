@@ -13,7 +13,7 @@ include_directories(include
   ${catkin_INCLUDE_DIRS}
 )
 
-add_executable(pololu_qik_node src/pololu_qik_node.cpp src/pololu_qik.cpp)
+add_executable(pololu_qik_node src/pololu_qik_node.cpp src/PololuQikActivity.cpp)
 
 target_link_libraries(pololu_qik_node
   ${catkin_LIBRARIES}

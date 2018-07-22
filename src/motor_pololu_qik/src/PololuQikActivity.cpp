@@ -1,4 +1,4 @@
-#include "pololu_qik/pololu_qik.hpp"
+#include "pololu_qik/PololuQikActivity.hpp"
 
 #include <cstdlib>
 #include <cerrno>
@@ -9,93 +9,93 @@
 namespace pololu_qik
 {
 
-pololu_qik::pololu_qik( ros::NodeHandle &_nh, ros::NodeHandle &_nh_priv ) :
-	port( "" ),
-	fd( -1 ),
+PololuQikActivity::PololuQikActivity(ros::NodeHandle &_nh, ros::NodeHandle &_nh_priv) :
+	port(""),
+	fd(-1),
 	num_devices(0),
 	last_command_time(0),
-	nh( _nh ),
-	nh_priv( _nh_priv )
+	nh(_nh),
+	nh_priv(_nh_priv)
 {
-	ROS_INFO( "Initializing" );
-	nh_priv.param( "port", port, (std::string)"/dev/ttyACM0" );
+	ROS_INFO("Initializing");
+	nh_priv.param("port", port, (std::string)"/dev/ttyACM0");
 }
 
-bool pololu_qik::open( )
+bool PololuQikActivity::open()
 {
 	struct termios fd_options;
 	unsigned char baud_autodetect = 0xAA;
 
-	if( is_open( ) )
+	if(isOpen())
 	{
-		ROS_INFO( "Port is already open - Closing to re-open" );
-		close( );
+		ROS_INFO("Port is already open - Closing to re-open");
+		close();
 	}
 
-	fd = ::open( port.c_str( ), O_RDWR | O_NOCTTY | O_NDELAY );
-	if( fd < 0 )
+	fd = ::open(port.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
+	if(fd < 0)
 	{
-		ROS_FATAL( "Failed to open port: %s", strerror( errno ) );
-		return false;
-	}
-
-	if( 0 > fcntl( fd, F_SETFL, 0 ) )
-	{
-		ROS_FATAL( "Failed to set port descriptor: %s", strerror( errno ) );
+		ROS_FATAL("Failed to open port: %s", strerror(errno));
 		return false;
 	}
 
-	if( 0 > tcgetattr( fd, &fd_options ) )
+	if(0 > fcntl(fd, F_SETFL, 0))
 	{
-		ROS_FATAL( "Failed to fetch port attributes: %s", strerror( errno ) );
-		return false;
-	}
-	if( 0 > cfsetispeed( &fd_options, B9600 ) )
-	{
-		ROS_FATAL( "Failed to set input baud: %s", strerror( errno ) );
-		return false;
-	}
-	if( 0 > cfsetospeed( &fd_options, B9600 ) )
-	{
-		ROS_FATAL( "Failed to set output baud: %s", strerror( errno ) );
-		return false;
-	}
-	if( 0 > tcsetattr( fd, TCSANOW, &fd_options ) )
-	{
-		ROS_FATAL( "Failed to set port attributes: %s", strerror( errno ) );
+		ROS_FATAL("Failed to set port descriptor: %s", strerror(errno));
 		return false;
 	}
 
-	if( 0 > write( fd, &baud_autodetect, 1 ) )
+	if(0 > tcgetattr(fd, &fd_options))
 	{
-		ROS_FATAL( "Failed to initialize device: %s", strerror( errno ) );
+		ROS_FATAL("Failed to fetch port attributes: %s", strerror(errno));
+		return false;
+	}
+	if(0 > cfsetispeed(&fd_options, B9600))
+	{
+		ROS_FATAL("Failed to set input baud: %s", strerror(errno));
+		return false;
+	}
+	if(0 > cfsetospeed(&fd_options, B9600))
+	{
+		ROS_FATAL("Failed to set output baud: %s", strerror(errno));
+		return false;
+	}
+	if(0 > tcsetattr(fd, TCSANOW, &fd_options))
+	{
+		ROS_FATAL("Failed to set port attributes: %s", strerror(errno));
+		return false;
+	}
+
+	if(0 > write(fd, &baud_autodetect, 1))
+	{
+		ROS_FATAL("Failed to initialize device: %s", strerror(errno));
 		return false;
 	}
 
 	return true;
 }
 
-void pololu_qik::close( )
+void PololuQikActivity::close()
 {
-	ROS_INFO( "Closing Port" );
+	ROS_INFO("Closing Port");
 
-	::close( fd );
+	::close(fd);
 }
 
-bool pololu_qik::start( )
+bool PololuQikActivity::start()
 {
-	if( !is_open( ) && !open( ) )
+	if(!isOpen() && !open())
 		return false;
 
-	ROS_INFO( "Starting" );
+	ROS_INFO("Starting");
 
-	if( !sub_command )
-		sub_command = nh.subscribe( "command", 1, &pololu_qik::command_callback, this );
+	if(!sub_command)
+		sub_command = nh.subscribe("command", 1, &PololuQikActivity::command_callback, this);
 
 	return true;
 }
 
-bool pololu_qik::spin_once( ) {
+bool PololuQikActivity::spinOnce() {
   ros::Time time = ros::Time::now();
   uint64_t t = 1000 * (uint64_t)time.sec + (uint64_t)time.nsec / 1e6;
   int i;
@@ -111,22 +111,22 @@ bool pololu_qik::spin_once( ) {
   return true;	
 }
 
-void pololu_qik::stop( )
+void PololuQikActivity::stop()
 {
-	ROS_INFO( "Stopping" );
+	ROS_INFO("Stopping");
 
-	if( sub_command )
-		sub_command.shutdown( );
+	if(sub_command)
+		sub_command.shutdown();
 
-	close( );
+	close();
 }
 
-bool pololu_qik::is_open( ) const
+bool PololuQikActivity::isOpen() const
 {
-	return ( fd >= 0 );
+	return (fd >= 0);
 }
 
-void pololu_qik::command_callback( const std_msgs::Float32MultiArrayPtr &msg )
+void PololuQikActivity::command_callback(const std_msgs::Float32MultiArrayPtr &msg)
 {
 	if(msg->data.size() == 0) {
           ROS_ERROR("no data");
@@ -142,7 +142,7 @@ void pololu_qik::command_callback( const std_msgs::Float32MultiArrayPtr &msg )
 	  num_devices = msg->data.size();
 	}
 
-	for(size_t i = 0; i < msg->data.size( ); i+=2 )
+	for(size_t i = 0; i < msg->data.size(); i+=2)
 	{
           int device_id = i / 2;
 	  if(msg->data[i] < -1.000000001 || msg->data[i] > 1.000000001) {
@@ -156,7 +156,7 @@ void pololu_qik::command_callback( const std_msgs::Float32MultiArrayPtr &msg )
 	}
 }
 
-bool pololu_qik::set(int device_id, int channel, double speed) {
+bool PololuQikActivity::set(int device_id, int channel, double speed) {
   if(!(channel==0 || channel == 1)) {
     ROS_ERROR("channel must be 0 or 1, got %d", channel);
     return false;
@@ -194,16 +194,16 @@ bool pololu_qik::set(int device_id, int channel, double speed) {
   }
 
 
-  if( 0 > write( fd, temp, 4 ) ) {
-     ROS_ERROR( "Failed to update device: %s", strerror( errno ) );
-     close( );
+  if(0 > write(fd, temp, 4)) {
+     ROS_ERROR("Failed to update device: %s", strerror(errno));
+     close();
      ros::shutdown();
      return false;
   }
 
-  if( 0 > write( fd, clear_error, 1 ) ) {
-     ROS_ERROR( "Failed to update device: %s", strerror( errno ) );
-     close( );
+  if(0 > write(fd, clear_error, 1)) {
+     ROS_ERROR("Failed to update device: %s", strerror(errno));
+     close();
      ros::shutdown();
      return false;
   }
