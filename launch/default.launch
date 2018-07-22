@@ -16,5 +16,5 @@
   <node pkg="status_system" type="status_system_node" name="status_system_node" ns="status"/>
   <node pkg="motion" type="mecanum_openloop_node" name="mecanum_openloop_node"/>
   <node pkg="remote" type="remote_node" name="remote_node"/>
-  <node pkg="avoidance" type="avoidance_node" name="avoidance_node"/>
+  <node pkg="avoidance" type="laserscan_avoidance_node" name="laserscan_avoidance_node"/>
 </launch>

@@ -1,4 +1,4 @@
-#include "avoidance/AvoidanceActivity.hpp"
+#include "avoidance/LaserScanAvoidanceActivity.hpp"
 
 #include <cmath>
 #include <cstdlib>
@@ -9,7 +9,7 @@
 
 namespace avoidance {
 
-AvoidanceActivity::AvoidanceActivity(ros::NodeHandle &_nh, ros::NodeHandle &_nh_priv) :
+LaserScanAvoidanceActivity::LaserScanAvoidanceActivity(ros::NodeHandle &_nh, ros::NodeHandle &_nh_priv) :
 	nh(_nh),
 	nh_priv(_nh_priv)
 {
@@ -21,30 +21,30 @@ AvoidanceActivity::AvoidanceActivity(ros::NodeHandle &_nh, ros::NodeHandle &_nh_
   nh_priv.param("avoidance_width", avoidance_width, (double)0.3);
 }
 
-bool AvoidanceActivity::start() {
+bool LaserScanAvoidanceActivity::start() {
   ROS_INFO("starting");
 
   if(!pub_multiplier) pub_multiplier = nh.advertise<std_msgs::Float32>(ns_motion + "/multiplier", 1);
 
   if(!sub_scan) {
-    sub_scan = nh.subscribe(ns_lidar + "/scan", 1, &AvoidanceActivity::onScan, this);
+    sub_scan = nh.subscribe(ns_lidar + "/scan", 1, &LaserScanAvoidanceActivity::onScan, this);
   }
 
   if(!sub_winning) {
-    sub_winning = nh.subscribe(ns_motion + "/winning", 1, &AvoidanceActivity::onWinning, this);
+    sub_winning = nh.subscribe(ns_motion + "/winning", 1, &LaserScanAvoidanceActivity::onWinning, this);
   }
 
   return true;
 }
 
-bool AvoidanceActivity::spinOnce() {
+bool LaserScanAvoidanceActivity::spinOnce() {
   ros::Time time = ros::Time::now();
   uint64_t t = 1000 * (uint64_t)time.sec + (uint64_t)time.nsec / 1e6;
 
   return true;	
 }
 
-bool AvoidanceActivity::stop() {
+bool LaserScanAvoidanceActivity::stop() {
   ROS_INFO("stopping");
 
   if(pub_multiplier) pub_multiplier.shutdown();
@@ -54,12 +54,12 @@ bool AvoidanceActivity::stop() {
   return true;
 }
 
-void AvoidanceActivity::onWinning(const geometry_msgs::TwistPtr& msg) {
+void LaserScanAvoidanceActivity::onWinning(const geometry_msgs::TwistPtr& msg) {
   if(abs(msg->linear.x) < 0.001 && abs(msg->linear.y) < 0.001) return;
   motion_angle = atan2(msg->linear.y, msg->linear.x);
 }
 
-void AvoidanceActivity::onScan(const sensor_msgs::LaserScanPtr& msg) {
+void LaserScanAvoidanceActivity::onScan(const sensor_msgs::LaserScanPtr& msg) {
   double theta;
   double r;
   int i;

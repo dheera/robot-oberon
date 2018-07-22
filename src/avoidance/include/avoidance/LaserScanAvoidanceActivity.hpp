@@ -1,5 +1,5 @@
-#ifndef _AvoidanceActivity_hpp
-#define _AvoidanceActivity_hpp
+#ifndef _LaserScanAvoidanceActivity_hpp
+#define _LaserScanAvoidanceActivity_hpp
 
 #include <ros/ros.h>
 #include <std_msgs/Float32.h>
@@ -8,9 +8,9 @@
 
 namespace avoidance {
 
-class AvoidanceActivity {
+class LaserScanAvoidanceActivity {
   public:
-	AvoidanceActivity(ros::NodeHandle &_nh, ros::NodeHandle &_nh_priv);
+	LaserScanAvoidanceActivity(ros::NodeHandle &_nh, ros::NodeHandle &_nh_priv);
 
 	bool start();
 	bool stop();
@@ -38,5 +38,5 @@ class AvoidanceActivity {
 
 }
 
-#endif /* _AvoidanceActivity_hpp */
+#endif /* _LaserScanAvoidanceActivity_hpp */
 
