@@ -1,0 +1,12 @@
+[submodule "catkin_ws/src/rplidar_ros"]
+	path = catkin_ws/src/rplidar_ros
+	url = https://github.com/robopeak/rplidar_ros
+[submodule "catkin_ws/src/ros-motor-pololu-qik"]
+	path = catkin_ws/src/ros-motor-pololu-qik
+	url = https://github.com/dheera/ros-motor-pololu-qik
+[submodule "catkin_ws/src/serial"]
+	path = catkin_ws/src/serial
+	url = https://github.com/wjwwood/serial
+[submodule "catkin_ws/src/ros-system-stats"]
+	path = catkin_ws/src/ros-system-stats
+	url = https://github.com/dheera/ros-system-stats

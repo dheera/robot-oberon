@@ -1,8 +1,0 @@
-prefix=/home/pi/robot-oberon/install
-
-Name: motor_pololu_qik
-Description: Description of motor_pololu_qik
-Version: 0.0.0
-Cflags: -I/home/pi/robot-oberon/install/include
-Libs: -L/home/pi/robot-oberon/install/lib 
-Requires: 
