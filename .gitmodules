@@ -1,6 +1,3 @@
-[submodule "catkin_ws/src/rplidar_ros"]
-	path = catkin_ws/src/rplidar_ros
-	url = https://github.com/robopeak/rplidar_ros
 [submodule "catkin_ws/src/serial"]
 	path = catkin_ws/src/serial
 	url = https://github.com/wjwwood/serial
