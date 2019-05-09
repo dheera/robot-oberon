@@ -16,7 +16,7 @@ LaserScanAvoidanceActivity::LaserScanAvoidanceActivity(ros::NodeHandle &_nh, ros
   ROS_INFO("initializing");
   nh_priv.param("ns_motion", ns_motion, (std::string)"/motion");
   nh_priv.param("ns_lidar", ns_lidar, (std::string)"/lidar");
-  nh_priv.param("inverted", inverted, (bool)true);
+  nh_priv.param("inverted", inverted, (bool)false);
   nh_priv.param("angle_offset", angle_offset, (double)0.0);
   nh_priv.param("avoidance_width", avoidance_width, (double)0.3);
 }
