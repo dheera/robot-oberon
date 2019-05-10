@@ -7,3 +7,6 @@
 [submodule "catkin_ws/src/rplidar_ros"]
 	path = catkin_ws/src/rplidar_ros
 	url = https://github.com/dheera/rplidar_ros
+[submodule "catkin_ws/src/ros-power-ina219"]
+	path = catkin_ws/src/ros-power-ina219
+	url = git@github.com:/dheera/ros-power-ina219
