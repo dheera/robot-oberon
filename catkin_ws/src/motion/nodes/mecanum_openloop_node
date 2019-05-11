@@ -5,7 +5,7 @@ import rospy
 import time
 
 from geometry_msgs.msg import Twist
-from std_msgs.msg import Float32MultiArray, Float32
+from std_msgs.msg import Int16MultiArray, Float32
 
 def on_motion_level(msg, level):
     on_motion_level.last_command_times[level] = time.time()
@@ -51,9 +51,9 @@ if __name__ == "__main__":
             Twist, queue_size = 1)
 
     pub_motor_command = rospy.Publisher("%s/command" % NS_MOTOR,
-            Float32MultiArray, queue_size = 1)
+            Int16MultiArray, queue_size = 1)
 
-    rate = rospy.Rate(50)
+    rate = rospy.Rate(15)
     while not rospy.is_shutdown():
         rate.sleep()
         t = time.time()
@@ -123,8 +123,8 @@ if __name__ == "__main__":
         if abs(rear_right_out) < 1e-6:
             rear_right_out = 0.0
 
-        command = Float32MultiArray()
-        command.data = [ front_left_out, -front_right_out, rear_left_out, -rear_right_out ]
+        command = Int16MultiArray()
+        command.data = [ int(rear_right_out*32767), int(rear_left_out*32767), int(front_right_out*32767), int(front_left_out*32767) ]
         pub_motor_command.publish(command)
 
     rospy.loginfo("shutdown")
