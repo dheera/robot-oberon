@@ -18,6 +18,10 @@ const remoteConfig = {
        {
          "type": "stick",
          "id": "stick0",
+       },
+       {
+         "type": "stickh",
+         "id": "stick1",
        }
     ]
   }
@@ -84,6 +88,7 @@ socket.on(DATA_IN, (data) => {
   let key = data[1];
   let value = data[2];
   if(id === "stick0" && key === "v") onStick(data[2]);
+  if(id === "stick1" && key === "v") onTurn(data[2]);
 });
 
 socket.on('auth_status', (status) => {
@@ -110,5 +115,15 @@ function onStick(pos) {
   let y = pos[1];
   t.linear.x = -y * 1.0;
   t.linear.y = -x * 1.0;
+  pub_motion.publish(t);
+}
+
+function onTurn(pos) {
+  if(pos.length !== 1) return;
+  if(!(typeof(pos[0]) === "number")) return;
+
+  let t = new geometry_msgs.msg.Twist();
+  let a = pos[0];
+  t.angular.z = a * 3.0;
   pub_motion.publish(t);
 }

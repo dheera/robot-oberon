@@ -109,10 +109,10 @@ if __name__ == "__main__":
         rear_left = np.clip(rear_left, -1.0, 1.0)
         rear_right = np.clip(rear_right, -1.0, 1.0)
 
-        front_left_out = front_left_out*0.9 + front_left*0.1
-        front_right_out = front_right_out*0.9 + front_right*0.1
-        rear_left_out = rear_left_out*0.9 + rear_left*0.1
-        rear_right_out = rear_right_out*0.9 + rear_right*0.1
+        front_left_out = front_left_out*0.7 + front_left*0.3
+        front_right_out = front_right_out*0.7 + front_right*0.3
+        rear_left_out = rear_left_out*0.7 + rear_left*0.3
+        rear_right_out = rear_right_out*0.7 + rear_right*0.3
 
         if abs(front_left_out) < 1e-6:
             front_left_out = 0.0
