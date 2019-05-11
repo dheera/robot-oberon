@@ -5,7 +5,16 @@ import rospy
 import serial
 import time
 
-from std_msgs.msg import Int32MultiArray, MultiArrayDimension
+from std_msgs.msg import Int16MultiArray, Int32MultiArray, MultiArrayDimension
+
+def on_command(msg):
+  if len(msg.data) != 4:
+      rospy.logwarn("bad command")
+      return
+
+  for i in range(4):
+      motor_set(i, msg.data[i])
+
 
 def motor_set(channel, value):
   global ser
@@ -13,14 +22,13 @@ def motor_set(channel, value):
 
   checksum = (cmd[1] + cmd[2] + cmd[3] + cmd[4]) % 255
   cmd += bytes([checksum])
-  print(cmd)
   ser.write(cmd)
   ser.flush()
 
 ticks = [0, 0, 0, 0]
 msg_ticks = Int32MultiArray()
 msg_ticks.data = [0, 0, 0, 0]
-msg_ticks_diff = Int32MultiArray()
+msg_ticks_diff = Int16MultiArray()
 msg_ticks_diff.data = [0, 0, 0, 0]
 
 def process_packet(packet):
@@ -49,8 +57,10 @@ if __name__ == "__main__":
     param_baudrate = rospy.get_param("~baudrate", 115200)
     ser = serial.Serial(param_device, baudrate = param_baudrate, timeout = 0)
 
+    sub_command = rospy.Subscriber("command", Int16MultiArray, on_command)
+
     pub_ticks = rospy.Publisher("ticks", Int32MultiArray, queue_size = 1)
-    pub_ticks_diff = rospy.Publisher("ticks_diff", Int32MultiArray, queue_size = 1)
+    pub_ticks_diff = rospy.Publisher("ticks_diff", Int16MultiArray, queue_size = 1)
 
     if not ser:
         rospy.logwarn("could not open serial port")
