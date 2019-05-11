@@ -73,7 +73,7 @@ void LaserScanAvoidanceActivity::onScan(const sensor_msgs::LaserScanPtr& msg) {
     r = msg->ranges[i];
     if(r > 0.7) continue;
 
-    theta = param_angle_offset + msg->angle_min + msg->angle_increment * i;
+    theta = -param_angle_offset + msg->angle_min + msg->angle_increment * i;
 
     x = r*cos(theta) - param_position_offset_x;
     y = r*sin(theta) - param_position_offset_y;
