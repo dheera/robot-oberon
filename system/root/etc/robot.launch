@@ -1,8 +1,4 @@
 <launch>
-  <node pkg="motor_pololu_qik" type="pololu_qik_node" name="pololu_qik_node" ns="motor">
-    <param name="port" type="string" value="/dev/ttyS0"/>
-  </node>
-
   <node respawn="true" respawn_delay="2" ns="lidar" name="rplidarNode" pkg="rplidar_ros" type="rplidarNode" output="screen">
     <param name="serial_port"         type="string" value="/dev/rplidar0"/>
     <param name="serial_baudrate"     type="int"    value="115200"/>
@@ -11,10 +7,19 @@
     <param name="angle_compensate"    type="bool"   value="true"/>
   </node>
 
-  <node pkg="imu_bno055" type="imu_bno055_node" name="imu_bno055_node" ns="imu"/>
+  <node pkg="imu_bno055" type="bno055_i2c_node" name="bno055_i2c_node" ns="imu" respawn="true" respawn_delay="2"/>
 
-  <node pkg="status_system" type="status_system_node" name="status_system_node" ns="status"/>
-  <node pkg="motion" type="mecanum_openloop_node" name="mecanum_openloop_node"/>
-  <node pkg="remote" type="remote_node" name="remote_node"/>
-  <node pkg="avoidance" type="laserscan_avoidance_node" name="laserscan_avoidance_node"/>
+  <node pkg="power_ina219" type="ina219_node" name="ina219_node_node" respawn="true" respawn_delay="2">
+    <param name="rshunt" type="double" value="0.01"/>
+  </node>
+
+  <node pkg="motor" type="motor_node" name="motor_node" ns="motor" respawn="true" respawn_delay="2"/>
+
+  <node pkg="status_system" type="status_system_node" name="status_system_node" ns="status" respawn="true" respawn_delay="2"/>
+
+  <node pkg="remote" type="remote_node" name="remote_node" respawn="true" respawn_delay="2"/>
+
+  <node pkg="motion" type="mecanum_openloop_node" name="mecanum_openloop_node" respawn="true" respawn_delay="2"/>
+
+  <node pkg="avoidance" type="laserscan_avoidance_node" name="laserscan_avoidance_node" respawn="true" respawn_delay="2"/>
 </launch>
