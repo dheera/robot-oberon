@@ -13,7 +13,7 @@ def on_command(msg):
       return
 
   for i in range(4):
-      motor_set(i, msg.data[i])
+      motor_set(i, param_flip[i] * msg.data[i])
 
 
 def motor_set(channel, value):
@@ -38,7 +38,7 @@ def process_packet(packet):
 
     if packet[0] == 0x45: # encoder data
         ticks_diff = [
-            ctypes.c_int8(packet[i]).value for i in range(1,5)
+            param_flip[i] * ctypes.c_int8(packet[i+1]).value for i in range(4)
         ]
 
         ticks = [
@@ -53,14 +53,16 @@ def process_packet(packet):
 if __name__ == "__main__":
     rospy.init_node("motor_node")
 
+    param_mapping = rospy.get_param("~mapping", "RR,RL,FR,FL") # not implemented
+    param_flip = [1 if c == "0" else -1 for c in rospy.get_param("~flip", "0101")]
     param_device = rospy.get_param("~device", "/dev/ttyTHS1")
     param_baudrate = rospy.get_param("~baudrate", 115200)
     ser = serial.Serial(param_device, baudrate = param_baudrate, timeout = 0)
-
     sub_command = rospy.Subscriber("command", Int16MultiArray, on_command)
 
     pub_ticks = rospy.Publisher("ticks", Int32MultiArray, queue_size = 1)
     pub_ticks_diff = rospy.Publisher("ticks_diff", Int16MultiArray, queue_size = 1)
+
 
     if not ser:
         rospy.logwarn("could not open serial port")
