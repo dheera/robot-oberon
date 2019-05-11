@@ -108,7 +108,7 @@ function onStick(pos) {
   let t = new geometry_msgs.msg.Twist();
   let x = pos[0];
   let y = pos[1];
-  t.linear.x = -y/5;
-  t.linear.y = -x/5;
+  t.linear.x = -y * 1.0;
+  t.linear.y = -x * 1.0;
   pub_motion.publish(t);
 }
