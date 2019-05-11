@@ -16,9 +16,11 @@ LaserScanAvoidanceActivity::LaserScanAvoidanceActivity(ros::NodeHandle &_nh, ros
   ROS_INFO("initializing");
   nh_priv.param("ns_motion", ns_motion, (std::string)"/motion");
   nh_priv.param("ns_lidar", ns_lidar, (std::string)"/lidar");
-  nh_priv.param("inverted", inverted, (bool)false);
-  nh_priv.param("angle_offset", angle_offset, (double)0.0);
-  nh_priv.param("avoidance_width", avoidance_width, (double)0.3);
+  nh_priv.param("ignore_regions", param_ignore_regions, std::vector<double> {}); // xmin0, xmax0, ymin0, ymax0, xmin1, xmax1, ymin1, ymax1, ...
+  nh_priv.param("angle_offset", param_angle_offset, (double)0.0);
+  nh_priv.param("position_offset_x", param_position_offset_x, (double) 0.05);
+  nh_priv.param("position_offset_y", param_position_offset_y, (double) 0.00);
+  nh_priv.param("avoidance_width", param_avoidance_width, 0.3);
 }
 
 bool LaserScanAvoidanceActivity::start() {
@@ -62,7 +64,8 @@ void LaserScanAvoidanceActivity::onWinning(const geometry_msgs::TwistPtr& msg) {
 void LaserScanAvoidanceActivity::onScan(const sensor_msgs::LaserScanPtr& msg) {
   double theta;
   double r;
-  int i;
+  double x, y;
+  int i, j;
 
   double multiplier_min = 1.0;
 
@@ -70,13 +73,23 @@ void LaserScanAvoidanceActivity::onScan(const sensor_msgs::LaserScanPtr& msg) {
     r = msg->ranges[i];
     if(r > 0.7) continue;
 
-    if(inverted) {
-      theta = angle_offset + msg->angle_min - msg->angle_increment * i;
-    } else {
-      theta = angle_offset + msg->angle_min + msg->angle_increment * i;
+    theta = param_angle_offset + msg->angle_min + msg->angle_increment * i;
+
+    x = r*cos(theta) - param_position_offset_x;
+    y = r*sin(theta) - param_position_offset_y;
+
+    bool ignore_point = false;
+
+    for(j=0;j<param_ignore_regions.size()/4;j++) {
+      if(x > param_ignore_regions[j*4 + 0] && x < param_ignore_regions[j*4 + 1] && \
+         y > param_ignore_regions[j*4 + 2] && y < param_ignore_regions[j*4 + 3]) {
+        ignore_point = true;
+      }
     }
 
-    if(cos(theta - motion_angle) > 0.5 && std::abs(r*sin(theta - motion_angle)) < avoidance_width/2) {
+    if(ignore_point) continue;
+
+    if(cos(theta - motion_angle) > 0.5 && std::abs(r*sin(theta - motion_angle)) < param_avoidance_width/2) {
       if(r < 0.3) {
          ROS_WARN_STREAM_THROTTLE(2, "obstacle in path");
       }

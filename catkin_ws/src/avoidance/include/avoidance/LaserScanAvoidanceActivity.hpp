@@ -25,9 +25,11 @@ class LaserScanAvoidanceActivity {
 
     std::string ns_motion;
     std::string ns_lidar;
-    bool inverted;
-    double angle_offset;
-    double avoidance_width;
+    std::vector<double> param_ignore_regions;
+    double param_angle_offset;
+    double param_position_offset_x;
+    double param_position_offset_y;
+    double param_avoidance_width;
 
     double motion_angle;
 
