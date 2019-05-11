@@ -84,6 +84,7 @@ void LaserScanAvoidanceActivity::onScan(const sensor_msgs::LaserScanPtr& msg) {
       if(x > param_ignore_regions[j*4 + 0] && x < param_ignore_regions[j*4 + 1] && \
          y > param_ignore_regions[j*4 + 2] && y < param_ignore_regions[j*4 + 3]) {
         ignore_point = true;
+        ROS_WARN_STREAM_THROTTLE(2, "ignore at x=" << x << " y=" << y);
       }
     }
 
@@ -91,7 +92,7 @@ void LaserScanAvoidanceActivity::onScan(const sensor_msgs::LaserScanPtr& msg) {
 
     if(cos(theta - motion_angle) > 0.5 && std::abs(r*sin(theta - motion_angle)) < param_avoidance_width/2) {
       if(r < 0.3) {
-         ROS_WARN_STREAM_THROTTLE(2, "obstacle in path");
+         ROS_WARN_STREAM_THROTTLE(2, "obstacle in path at x=" << x << " y=" << y);
       }
       multiplier_min = std::min(
               multiplier_min, 
