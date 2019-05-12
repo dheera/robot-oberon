@@ -16,26 +16,30 @@ def on_motion_level(msg, level):
 on_motion_level.last_command_times = [0.0] * 5
 on_motion_level.last_commands = [Twist()] * 5
 
-last_ticks = [0, 0, 0, 0]
-last_ticks_time = 0
-ticks_vel = [0., 0., 0., 0.]
+VELOCITY_AVERAGE_NUM = 20
+ticks = np.zeros((VELOCITY_AVERAGE_NUM,4), dtype = np.int32)
+ticks_time = np.zeros(VELOCITY_AVERAGE_NUM, dtype = np.float64)
+velocity = np.zeros(4, dtype = np.float64)
+compute_velocity = False
+ticks_ptr = 0
+
 def on_ticks(msg):
-    global last_ticks, last_ticks_time, ticks_vel
+    global ticks, ticks_time, ticks_ptr, velocity, compute_velocity
 
     if len(msg.data) != 4:
         rospy.logwarn_throttle(2, "received invalid ticks")
         return
 
-    ticks = msg.data
+    ticks_time[ticks_ptr] = time.time()
+    ticks[ticks_ptr, :] = msg.data
 
-    if last_ticks_time != 0:
-        dt = time.time() - last_ticks_time
-        ticks_vel = [ticks[i] - last_ticks[i] for i in range(4)]
-        rospy.logwarn("vel", str(last_Ticks_vel))
-
-    last_ticks_time = time.time()
-    last_ticks = ticks
-    return
+    if compute_velocity:
+        velocity = M_PER_TICK * (ticks[ticks_ptr] - ticks[(ticks_ptr + 1) % VELOCITY_AVERAGE_NUM]) \
+            / (ticks_time[ticks_ptr] - ticks_time[(ticks_ptr + 1) % VELOCITY_AVERAGE_NUM])
+    elif ticks_ptr == VELOCITY_AVERAGE_NUM - 1:
+        compute_velocity = True
+    
+    ticks_ptr = (ticks_ptr + 1) % VELOCITY_AVERAGE_NUM
 
 def on_multiplier(msg):
     on_multiplier.last_multiplier_time = time.time()
@@ -62,19 +66,23 @@ if __name__ == "__main__":
     LIMIT_LINEAR = rospy.get_param("~limit_linear", 0.5)
     LIMIT_ANGULAR = rospy.get_param("~limit_angular", 1.0)
     LEVEL_EXPIRY = rospy.get_param("~level_expiry", 1.0) # TODO: not yet implemented
-    M_PER_TICK = 0.001
+    M_PER_TICK = 3.14159265358979 * 0.060 / 1180
 
-    pid_front_left = PID(KP=0.2, KI=0.1, KD=0.0, I_LIMIT = 10.0)
-    pid_front_right = PID(KP=0.2, KI=0.1, KD=0.0, I_LIMIT = 10.0)
-    pid_rear_left = PID(KP=0.2, KI=0.1, KD=0.0, I_LIMIT = 10.0)
-    pid_rear_right = PID(KP=0.2, KI=0.1, KD=0.0, I_LIMIT = 10.0)
+    KP = 0.4
+    KI = 3.0
+    KD = 0.05
+    I_LIMIT = 10.0
+    
+    pid_front_left = PID(KP=KP, KI=KI, KD=KD, I_LIMIT = I_LIMIT, debug_callback = print)
+    pid_front_right = PID(KP=KP, KI=KI, KD=KD, I_LIMIT = I_LIMIT)
+    pid_rear_left = PID(KP=KP, KI=KI, KD=KD, I_LIMIT = I_LIMIT)
+    pid_rear_right = PID(KP=KP, KI=KI, KD=KD, I_LIMIT = I_LIMIT)
 
     for level in range(5):
         rospy.Subscriber("%s/level%d" % (NS_MOTION, level),
                 Twist, on_motion_level, callback_args = level)
 
-    rospy.Subscriber("%s/ticks" % (NS_MOTOR),
-            Int32, on_ticks)
+    rospy.Subscriber("%s/ticks" % (NS_MOTOR), Int32MultiArray, on_ticks, queue_size = 1)
 
     rospy.Subscriber("%s/multiplier" % (NS_MOTION),
             Float32, on_multiplier)
@@ -85,10 +93,12 @@ if __name__ == "__main__":
     pub_motor_command = rospy.Publisher("%s/command" % NS_MOTOR,
             Int16MultiArray, queue_size = 1)
 
-    rate = rospy.Rate(15)
+    rate = rospy.Rate(100)
+    seq = 0
     while not rospy.is_shutdown():
         rate.sleep()
         t = time.time()
+        seq += 1
 
         # compute the "winning" command (highest non-expired level)
 
@@ -118,11 +128,11 @@ if __name__ == "__main__":
 
         pub_motion_winning.publish(winning_command)
 
-        # apply multipliersa
+        # apply multipliers
 
-        winning_command.linear.x *= on_multiplier.last_multiplier
-        winning_command.linear.y *= on_multiplier.last_multiplier
-        winning_command.angular.z *= on_multiplier.last_multiplier
+        #winning_command.linear.x *= on_multiplier.last_multiplier
+        #winning_command.linear.y *= on_multiplier.last_multiplier
+        #winning_command.angular.z *= on_multiplier.last_multiplier
 
         # mecanum wheel math
 
@@ -134,10 +144,13 @@ if __name__ == "__main__":
 
         pid_rear_right.target = (winning_command.linear.x - winning_command.linear.y - (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
 
-        cmd_front_left = pid_front_left.update(ticks_vel[3] * M_PER_TICK)
-        cmd_front_right = pid_front_right.update(ticks_vel[2] * M_PER_TICK)
-        cmd_rear_left = pid_rear_left.update(ticks_vel[1] * M_PER_TICK)
-        cmd_rear_right = pid_rear_right.update(ticks_vel[0] * M_PER_TICK)
+        print("targets:", pid_front_left.target)
+
+        cmd_front_left = pid_front_left.update(velocity[3])
+        print("cmd:", cmd_front_left)
+        cmd_front_right = pid_front_right.update(velocity[2])
+        cmd_rear_left = pid_rear_left.update(velocity[1])
+        cmd_rear_right = pid_rear_right.update(velocity[0])
 
         # impose limits
 
@@ -160,13 +173,14 @@ if __name__ == "__main__":
         if abs(cmd_rear_right_out) < 1e-4:
             cmd_rear_right_out = 0.0
 
-        command = Int16MultiArray()
-        command.data = [
-            int(cmd_rear_right_out*32767),
-            int(cmd_rear_left_out*32767),
-            int(cmd_front_right_out*32767),
-            int(cmd_front_left_out*32767),
-        ]
-        pub_motor_command.publish(command)
+        if seq % 5 == 0:
+            command = Int16MultiArray()
+            command.data = [
+                int(cmd_rear_right_out*32767),
+                int(cmd_rear_left_out*32767),
+                int(cmd_front_right_out*32767),
+                int(cmd_front_left_out*32767),
+            ]
+            pub_motor_command.publish(command)
 
     rospy.loginfo("shutdown")
