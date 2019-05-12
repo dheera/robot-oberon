@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+
+import numpy as np
+import rospy
+import time
+
+from pid import PID
+
+from geometry_msgs.msg import Twist
+from std_msgs.msg import Int16MultiArray, Float32
+
+def on_motion_level(msg, level):
+    on_motion_level.last_command_times[level] = time.time()
+    on_motion_level.last_commands[level] = msg
+
+on_motion_level.last_command_times = [0.0] * 5
+on_motion_level.last_commands = [Twist()] * 5
+
+def on_multiplier(msg):
+    on_multiplier.last_multiplier_time = time.time()
+    on_multiplier.last_multiplier = np.clip(msg.data, 0.0, 1.0)
+
+on_multiplier.last_multiplier = 0.0
+on_multiplier.last_multiplier_time = 0.0
+
+if __name__ == "__main__":
+    rospy.init_node("mecanum_openloop_node")
+    rospy.loginfo("initializing")
+
+    front_left_out = 0.0
+    front_right_out = 0.0
+    rear_left_out = 0.0
+    rear_right_out = 0.0
+
+    NS_MOTOR = rospy.get_param("~ns_motor", "/motor")
+    NS_MOTION = rospy.get_param("~ns_motion", "/motion")
+    WHEEL_BASE_X = rospy.get_param("~wheel_base_x", 0.137)
+    WHEEL_BASE_Y = rospy.get_param("~wheel_base_y", 0.183)
+    WHEEL_RADIUS = rospy.get_param("~wheel_radius", 0.03)
+    VELOCITY_SCALE = rospy.get_param("~velocity_scale", 0.03) # (command units / (rad/s))
+    LIMIT_LINEAR = rospy.get_param("~limit_linear", 0.5)
+    LIMIT_ANGULAR = rospy.get_param("~limit_angular", 1.0)
+    LEVEL_EXPIRY = rospy.get_param("~level_expiry", 1.0) # TODO: not yet implemented
+    M_PER_TICK = 0.001
+
+    pid_front_left = PID(KP=0.2, KI=0.1, KD=0.0, I_LIMIT = 10.0)
+    pid_front_right = PID(KP=0.2, KI=0.1, KD=0.0, I_LIMIT = 10.0)
+    pid_rear_left = PID(KP=0.2, KI=0.1, KD=0.0, I_LIMIT = 10.0)
+    pid_rear_right = PID(KP=0.2, KI=0.1, KD=0.0, I_LIMIT = 10.0)
+
+    for level in range(5):
+        rospy.Subscriber("%s/level%d" % (NS_MOTION, level),
+                Twist, on_motion_level, callback_args = level)
+
+    rospy.Subscriber("%s/ticks" % (NS_MOTOR),
+            Int32, on_ticks)
+
+    rospy.Subscriber("%s/multiplier" % (NS_MOTION),
+            Float32, on_multiplier)
+
+    pub_motion_winning = rospy.Publisher("%s/winning" % NS_MOTION,
+            Twist, queue_size = 1)
+
+    pub_motor_command = rospy.Publisher("%s/command" % NS_MOTOR,
+            Int16MultiArray, queue_size = 1)
+
+    rate = rospy.Rate(15)
+    while not rospy.is_shutdown():
+        rate.sleep()
+        t = time.time()
+
+        # compute the "winning" command (highest non-expired level)
+
+        winning_level = np.argmax(on_motion_level.last_command_times)
+        winning_time = on_motion_level.last_command_times[winning_level]
+
+        winning_command = Twist()
+        winning_command.linear.x = on_motion_level.last_commands[winning_level].linear.x
+        winning_command.linear.y = on_motion_level.last_commands[winning_level].linear.y
+        winning_command.angular.z = on_motion_level.last_commands[winning_level].angular.z
+
+        # no commands over 250ms old
+
+        if t - winning_time > 0.250:
+            winning_command.linear.x = 0
+            winning_command.linear.y = 0
+            winning_command.angular.z = 0
+
+        # impose limits
+
+        winning_command.linear.x = np.clip(winning_command.linear.x,
+                -LIMIT_LINEAR, LIMIT_LINEAR)
+        winning_command.linear.z = np.clip(winning_command.linear.z,
+                -LIMIT_LINEAR, LIMIT_LINEAR)
+        winning_command.angular.x = np.clip(winning_command.angular.x,
+                -LIMIT_ANGULAR, LIMIT_ANGULAR)
+
+        pub_motion_winning.publish(winning_command)
+
+        # apply multipliersa
+
+        winning_command.linear.x *= on_multiplier.last_multiplier
+        winning_command.linear.y *= on_multiplier.last_multiplier
+        winning_command.angular.z *= on_multiplier.last_multiplier
+
+        # mecanum wheel math
+
+        pid_front_left.target = (winning_command.linear.x - winning_command.linear.y + (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+
+        pid_front_right.target = (winning_command.linear.x + winning_command.linear.y - (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+
+        pid_rear_left.target = (winning_command.linear.x + winning_command.linear.y + (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+
+        pid_rear_right.target = (winning_command.linear.x - winning_command.linear.y - (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+
+        cmd_front_left = pid_front_left.update(vel_front_left)
+        cmd_front_right = pid_front_right.update(vel_front_right)
+        cmd_rear_left = pid_rear_left.update(vel_rear_left)
+        cmd_rear_right = pid_rear_right.update(vel_rear_right)
+
+        # impose limits
+
+        cmd_front_left = np.clip(cmd_front_left, -1.0, 1.0)
+        cmd_front_right = np.clip(cmd_front_right, -1.0, 1.0)
+        cmd_rear_left = np.clip(cmd_rear_left, -1.0, 1.0)
+        cmd_rear_right = np.clip(cmd_rear_right, -1.0, 1.0)
+
+        cmd_front_left_out = cmd_front_left_out*0.7 + cmd_front_left*0.3
+        cmd_front_right_out = cmd_front_right_out*0.7 + cmd_front_right*0.3
+        cmd_rear_left_out = cmd_rear_left_out*0.7 + cmd_rear_left*0.3
+        cmd_rear_right_out = cmd_rear_right_out*0.7 + cmd_rear_right*0.3
+
+        if abs(cmd_front_left_out) < 1e-4:
+            cmd_front_left_out = 0.0
+        if abs(cmd_front_right_out) < 1e-4:
+            cmd_front_right_out = 0.0
+        if abs(cmd_rear_left_out) < 1e-4:
+            cmd_rear_left_out = 0.0
+        if abs(cmd_rear_right_out) < 1e-4:
+            cmd_rear_right_out = 0.0
+
+        command = Int16MultiArray()
+        command.data = [
+            int(cmd_rear_right_out*32767),
+            int(cmd_rear_left_out*32767),
+            int(cmd_front_right_out*32767),
+            int(cmd_front_left_out*32767),
+        ]
+        pub_motor_command.publish(command)
+
+    rospy.loginfo("shutdown")
