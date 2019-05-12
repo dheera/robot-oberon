@@ -21,5 +21,12 @@
 
   <node pkg="motion" type="mecanum_openloop_node" name="mecanum_openloop_node" respawn="true" respawn_delay="2"/>
 
-  <node pkg="avoidance" type="laserscan_avoidance_node" name="laserscan_avoidance_node" respawn="true" respawn_delay="2"/>
+  <node pkg="avoidance" type="laserscan_avoidance_node" name="laserscan_avoidance_node" respawn="true" respawn_delay="2">
+    <rosparam>
+      angle_offset: -1.5707
+      position_offset_x: -0.055
+      position_offset_y: 0.0
+      ignore_regions: [-0.115, -0.095, 0.095, 0.115, -0.115, -0.095, -0.115, -0.095]
+    </rosparam>
+  </node>
 </launch>
