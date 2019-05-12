@@ -7,7 +7,7 @@ import time
 from pid import PID
 
 from geometry_msgs.msg import Twist
-from std_msgs.msg import Int16MultiArray, Float32
+from std_msgs.msg import Int16MultiArray, Int32MultiArray, Float32, Int32
 
 def on_motion_level(msg, level):
     on_motion_level.last_command_times[level] = time.time()
@@ -15,6 +15,27 @@ def on_motion_level(msg, level):
 
 on_motion_level.last_command_times = [0.0] * 5
 on_motion_level.last_commands = [Twist()] * 5
+
+last_ticks = [0, 0, 0, 0]
+last_ticks_time = 0
+ticks_vel = [0., 0., 0., 0.]
+def on_ticks(msg):
+    global last_ticks, last_ticks_time, ticks_vel
+
+    if len(msg.data) != 4:
+        rospy.logwarn_throttle(2, "received invalid ticks")
+        return
+
+    ticks = msg.data
+
+    if last_ticks_time != 0:
+        dt = time.time() - last_ticks_time
+        ticks_vel = [ticks[i] - last_ticks[i] for i in range(4)]
+        rospy.logwarn("vel", str(last_Ticks_vel))
+
+    last_ticks_time = time.time()
+    last_ticks = ticks
+    return
 
 def on_multiplier(msg):
     on_multiplier.last_multiplier_time = time.time()
@@ -27,10 +48,10 @@ if __name__ == "__main__":
     rospy.init_node("mecanum_openloop_node")
     rospy.loginfo("initializing")
 
-    front_left_out = 0.0
-    front_right_out = 0.0
-    rear_left_out = 0.0
-    rear_right_out = 0.0
+    cmd_front_left_out = 0.0
+    cmd_front_right_out = 0.0
+    cmd_rear_left_out = 0.0
+    cmd_rear_right_out = 0.0
 
     NS_MOTOR = rospy.get_param("~ns_motor", "/motor")
     NS_MOTION = rospy.get_param("~ns_motion", "/motion")
@@ -113,10 +134,10 @@ if __name__ == "__main__":
 
         pid_rear_right.target = (winning_command.linear.x - winning_command.linear.y - (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
 
-        cmd_front_left = pid_front_left.update(vel_front_left)
-        cmd_front_right = pid_front_right.update(vel_front_right)
-        cmd_rear_left = pid_rear_left.update(vel_rear_left)
-        cmd_rear_right = pid_rear_right.update(vel_rear_right)
+        cmd_front_left = pid_front_left.update(ticks_vel[3] * M_PER_TICK)
+        cmd_front_right = pid_front_right.update(ticks_vel[2] * M_PER_TICK)
+        cmd_rear_left = pid_rear_left.update(ticks_vel[1] * M_PER_TICK)
+        cmd_rear_right = pid_rear_right.update(ticks_vel[0] * M_PER_TICK)
 
         # impose limits
 
