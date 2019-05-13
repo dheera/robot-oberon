@@ -166,7 +166,6 @@ void PWMStop(int channel)
 
 void PWMInit(unsigned char digitalPin) 
 {
-  TIM_Configuration();
   pinMode(digitalPin,OUTPUT);
   
   if(digitalPin==8){
@@ -199,6 +198,8 @@ void setup() {
    delay(1000);
    Serial3.begin(115200);
 
+
+     TIM_Configuration();
      for(int j=0;j<4;j++){
        pinMode(motorDirPin[j][0], OUTPUT);
        digitalWrite(motorDirPin[j][0], LOW);
@@ -249,32 +250,47 @@ unsigned long lastSetTime;
 char buf[9];
 unsigned int bufpos=255;
 
+bool signs[4] = {false, false, false, false};
+
 void set(uint8_t channel, int16_t value) {
-  //if(value == 0) value = 1;
   if(value>=0) {
-       pinMode(motorDirPin[channel][0], OUTPUT);
-       digitalWrite(motorDirPin[channel][0], LOW);
-       dut[channel] = 0xFF & ((value) >> 7);
+       dut[channel] = 0xFF & (((uint16_t)value) >> 7);
+       if(signs[channel]) dut[channel] = 0;
+       //if(dut[channel]==1) dut[channel]==2;
        if(dut[channel] == 0) {
          PWMStop(channel);
          pinMode(motorDirPin[channel][0], OUTPUT);
          digitalWrite(motorDirPin[channel][0], LOW);
+         pinMode(motorDirPin[channel][1], OUTPUT);
+         digitalWrite(motorDirPin[channel][1], LOW);
        } else {
+         pinMode(motorDirPin[channel][0], OUTPUT);
+         digitalWrite(motorDirPin[channel][0], LOW);
+         pinMode(motorDirPin[channel][1], OUTPUT);
+         digitalWrite(motorDirPin[channel][1], LOW);
          PWMInit(motorDirPin[channel][1]);
          PWMStart(channel);
        }
+       signs[channel] = false;
       } else {
-       pinMode(motorDirPin[channel][1], OUTPUT);
-       digitalWrite(motorDirPin[channel][1], LOW);
-       dut[channel] = 0xFF & ((-value) >> 7);
+       dut[channel] = 0xFF & ((~(uint16_t)value) >> 7);
+       if(!signs[channel]) dut[channel] = 0;
+       //if(dut[channel]==1) dut[channel]==2;
        if(dut[channel] == 0) {
          PWMStop(channel);
          pinMode(motorDirPin[channel][0], OUTPUT);
          digitalWrite(motorDirPin[channel][0], LOW);
+         pinMode(motorDirPin[channel][1], OUTPUT);
+         digitalWrite(motorDirPin[channel][1], LOW);
        } else {
+         pinMode(motorDirPin[channel][0], OUTPUT);
+         digitalWrite(motorDirPin[channel][0], LOW);
+         pinMode(motorDirPin[channel][1], OUTPUT);
+         digitalWrite(motorDirPin[channel][1], LOW);
          PWMInit(motorDirPin[channel][0]);
          PWMStart(channel);
        }
+       signs[channel] = true;
       }
 }
 
