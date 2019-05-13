@@ -20,6 +20,7 @@ include_directories(
 catkin_install_python(PROGRAMS
   nodes/mecanum_openloop_node
   nodes/mecanum_closedloop_node
+  nodes/pid.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
