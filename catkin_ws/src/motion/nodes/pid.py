@@ -107,7 +107,7 @@ class PID:
              + self.KD * self.error_d
 
         # safety feature in case update() is not called frequently enough
-        if time_step > 0.2:
+        if time_step > 0.5:
           if callable(self.debug_callback):
               self.debug_callback("infrequent updates, returning 0")
           return 0

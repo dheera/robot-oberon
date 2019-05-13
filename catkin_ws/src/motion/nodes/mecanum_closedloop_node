@@ -68,12 +68,12 @@ if __name__ == "__main__":
     LEVEL_EXPIRY = rospy.get_param("~level_expiry", 1.0) # TODO: not yet implemented
     M_PER_TICK = 3.14159265358979 * 0.060 / 1180
 
-    KP = 0.4
+    KP = 0.5
     KI = 3.0
     KD = 0.05
-    I_LIMIT = 10.0
+    I_LIMIT = 1.0
     
-    pid_front_left = PID(KP=KP, KI=KI, KD=KD, I_LIMIT = I_LIMIT, debug_callback = print)
+    pid_front_left = PID(KP=KP, KI=KI, KD=KD, I_LIMIT = I_LIMIT)
     pid_front_right = PID(KP=KP, KI=KI, KD=KD, I_LIMIT = I_LIMIT)
     pid_rear_left = PID(KP=KP, KI=KI, KD=KD, I_LIMIT = I_LIMIT)
     pid_rear_right = PID(KP=KP, KI=KI, KD=KD, I_LIMIT = I_LIMIT)
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     pub_motor_command = rospy.Publisher("%s/command" % NS_MOTOR,
             Int16MultiArray, queue_size = 1)
 
-    rate = rospy.Rate(100)
+    rate = rospy.Rate(50)
     seq = 0
     while not rospy.is_shutdown():
         rate.sleep()
@@ -130,27 +130,39 @@ if __name__ == "__main__":
 
         # apply multipliers
 
-        #winning_command.linear.x *= on_multiplier.last_multiplier
-        #winning_command.linear.y *= on_multiplier.last_multiplier
-        #winning_command.angular.z *= on_multiplier.last_multiplier
+        winning_command.linear.x *= on_multiplier.last_multiplier
+        winning_command.linear.y *= on_multiplier.last_multiplier
+        winning_command.angular.z *= on_multiplier.last_multiplier
 
         # mecanum wheel math
 
         pid_front_left.target = (winning_command.linear.x - winning_command.linear.y + (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+        if abs(pid_front_left.target) < 1e-2:
+            pid_front_left.reset()
+            cmd_front_left = 0.0
+        else:
+            cmd_front_left = pid_front_left.update(velocity[3])
 
         pid_front_right.target = (winning_command.linear.x + winning_command.linear.y - (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+        if abs(pid_front_right.target) < 1e-2:
+            pid_front_right.reset()
+            cmd_front_right = 0.0
+        else:
+            cmd_front_right = pid_front_right.update(velocity[2])
 
         pid_rear_left.target = (winning_command.linear.x + winning_command.linear.y + (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
+        if abs(pid_rear_left.target) < 1e-2:
+            pid_rear_left.reset()
+            cmd_rear_left = 0.0
+        else:
+            cmd_rear_left = pid_rear_left.update(velocity[1])
 
         pid_rear_right.target = (winning_command.linear.x - winning_command.linear.y - (WHEEL_BASE_X + WHEEL_BASE_Y)*winning_command.angular.z);
-
-        print("targets:", pid_front_left.target)
-
-        cmd_front_left = pid_front_left.update(velocity[3])
-        print("cmd:", cmd_front_left)
-        cmd_front_right = pid_front_right.update(velocity[2])
-        cmd_rear_left = pid_rear_left.update(velocity[1])
-        cmd_rear_right = pid_rear_right.update(velocity[0])
+        if abs(pid_rear_right.target) < 1e-2:
+            pid_rear_right.reset()
+            cmd_rear_right = 0.0
+        else:
+            cmd_rear_right = pid_rear_right.update(velocity[0])
 
         # impose limits
 
@@ -173,7 +185,7 @@ if __name__ == "__main__":
         if abs(cmd_rear_right_out) < 1e-4:
             cmd_rear_right_out = 0.0
 
-        if seq % 5 == 0:
+        if seq % 4 == 0:
             command = Int16MultiArray()
             command.data = [
                 int(cmd_rear_right_out*32767),
