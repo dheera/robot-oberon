@@ -1,0 +1,3 @@
+#!/bin/bash
+
+curl https://raw.githubusercontent.com/dheera/jetson-install-this/master/$1.shit | bash

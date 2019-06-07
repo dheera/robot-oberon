@@ -1,0 +1,12 @@
+#!/bin/bash
+
+sudo apt-get update
+
+sudo apt-get install python-pip python3-pip
+cat pip-installs.txt | xargs sudo pip install --upgrade
+cat pip-installs.txt | xargs sudo pip3 install --upgrade
+
+./magic-jetson-install ros
+./magic-jetson-install pytorch
+./magic-jetson-install tensorflow
+
