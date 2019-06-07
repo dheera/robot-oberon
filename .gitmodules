@@ -13,3 +13,6 @@
 [submodule "catkin_ws/src/ros-motor-romeo-quad"]
 	path = catkin_ws/src/ros-motor-romeo-quad
 	url = git@github.com:/dheera/ros-motor-romeo-quad
+[submodule "catkin_ws/src/ros-imu-bno055"]
+	path = catkin_ws/src/ros-imu-bno055
+	url = git@github.com:/dheera/ros-imu-bno055
