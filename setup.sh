@@ -1,5 +1,7 @@
 #!/bin/bash
 
+sudo cp -r system/roots/* /
+
 sudo apt-get update
 
 echo "apt-getting stuff ..."
@@ -11,9 +13,9 @@ cat system/pip-installs.txt | xargs sudo pip3 install --upgrade
 
 echo "installing other stuff ..."
 echo "[ros]"
-system/magic-jetson-install ros
+magic-jetson-install ros
 echo "[pytorch]"
-system/magic-jetson-install pytorch
+magic-jetson-install pytorch
 echo "[tensorflow]"
-system/magic-jetson-install tensorflow
+magic-jetson-install tensorflow
 
