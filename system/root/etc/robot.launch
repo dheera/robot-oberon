@@ -13,7 +13,7 @@
     <param name="rshunt" type="double" value="0.01"/>
   </node>
 
-  <node pkg="motor" type="motor_node" name="motor_node" ns="motor" respawn="true" respawn_delay="2"/>
+  <node pkg="motor_romeo_quad" type="romeo_quad_node" name="romeo_quad_node" ns="motor" respawn="true" respawn_delay="2"/>
 
   <node pkg="status_system" type="status_system_node" name="status_system_node" ns="status" respawn="true" respawn_delay="2"/>
 
