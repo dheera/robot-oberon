@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sudo cp -r system/roots/* /
+sudo cp -r system/root/* /
 
 sudo apt-get update
 
