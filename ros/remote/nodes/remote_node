@@ -19,10 +19,6 @@ const remoteConfig = {
          "type": "stick",
          "id": "stick0",
        },
-       {
-         "type": "stickh",
-         "id": "stick1",
-       }
     ]
   }
 }
@@ -53,7 +49,7 @@ ros.initNode('remote_node').then(() => {
     });
   });
 
-  pub_motion = nh.advertise('/motion/level2', 'geometry_msgs/Twist')
+  pub_motion = nh.advertise('/cmd_vel/input/4', 'geometry_msgs/Twist')
 
 });
 
@@ -88,7 +84,6 @@ socket.on(DATA_IN, (data) => {
   let key = data[1];
   let value = data[2];
   if(id === "stick0" && key === "v") onStick(data[2]);
-  if(id === "stick1" && key === "v") onTurn(data[2]);
 });
 
 socket.on('auth_status', (status) => {
@@ -114,7 +109,7 @@ function onStick(pos) {
   let x = pos[0];
   let y = pos[1];
   t.linear.x = -y * 1.0;
-  t.linear.y = -x * 1.0;
+  t.angular.z = -x * 1.0;
   pub_motion.publish(t);
 }
 
